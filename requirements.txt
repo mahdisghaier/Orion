@@ -1,0 +1,34 @@
+# ─── Database ──────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.35
+asyncpg==0.29.0
+alembic==1.13.3
+
+# ─── Pydantic v2 ───────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# ─── Auth ──────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.12
+
+# ─── FastAPI (will use in Phase 1, install now) ────────────
+fastapi==0.115.0
+uvicorn[standard]==0.31.0
+
+# ─── HTTP client (for SIEM connectors, Phase 4) ────────────
+httpx==0.27.2
+
+# ─── Utilities ─────────────────────────────────────────────
+pyyaml>=6.0.3
+python-dateutil==2.9.0
+email-validator==2.2.0
+bcrypt==4.0.1
+cryptography==43.0.1
+pysigma==0.11.11
+pysigma-backend-microsoft365defender==0.3.3
+pysigma-backend-elasticsearch==1.1.4python-dotenv==1.0.1
+langchain-google-genai==2.0.0
+langgraph==0.2.34
+langchain-core==0.3.10
+pyyaml>=6.0.3
