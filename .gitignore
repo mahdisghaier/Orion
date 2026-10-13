@@ -11,21 +11,19 @@ venv/
 .venv
 env/
 ENV/
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
 # OS
 .DS_Store
 Thumbs.db
-
 # Logs
 *.log
-
 # Test artifacts
 .pytest_cache/
 .coverage
 htmlcov/
+cookies.txt
+*.pyc

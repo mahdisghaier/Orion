@@ -66,7 +66,7 @@ class UserResponse(UserBase):
 # ─────────────────────────────────────────────────────────────────
 class SIEMConnectionBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    type: str = Field(..., pattern="^(sentinel|elastic)$")
+    type: str = Field(..., pattern="^(sentinel|elastic|wazuh)$")
 
 
 class SIEMConnectionCreate(SIEMConnectionBase):

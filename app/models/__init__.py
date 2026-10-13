@@ -84,7 +84,7 @@ class SIEMConnection(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("type IN ('sentinel','elastic')", name="ck_siem_type"),
+        CheckConstraint("type IN ('sentinel','elastic','wazuh')", name="ck_siem_type"),
     )
 
 
@@ -254,7 +254,7 @@ class HuntResult(Base):
             "analyst_status IN ('new','validated','false_positive','escalated')",
             name="ck_results_status"
         ),
-        CheckConstraint("siem_type IN ('sentinel','elastic')", name="ck_results_siem_type"),
+        CheckConstraint("siem_type IN ('sentinel','elastic','wazuh')", name="ck_results_siem_type"),
         CheckConstraint(
             "mitre_mapping_source IN ('explicit','llm_inferred')",
             name="ck_results_mitre_src"
