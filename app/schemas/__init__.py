@@ -87,6 +87,15 @@ class SIEMConnectionResponse(SIEMConnectionBase):
     # Admin gets connection list, then fetches config separately if needed
 
 
+class SIEMProfileResponse(BaseModel):
+    """What a SIEM connection can actually see (see services/data_profile.py)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    siem_connection_id: UUID
+    profile: dict
+    collected_at: datetime
+
+
 class SIEMConnectionTestResult(BaseModel):
     success: bool
     message: str

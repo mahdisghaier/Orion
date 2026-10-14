@@ -49,3 +49,10 @@ class BaseSIEMConnector(ABC):
         newest first. Connectors that cannot do this keep the default.
         """
         raise NotImplementedError(f"{self.siem_type} connector does not support context pivots")
+
+    async def profile(self, window_days: int = 7) -> dict:
+        """Read-only: what this SIEM holds (volume, time coverage, field population, event kinds).
+
+        See services/data_profile.py. Connectors that cannot profile keep the default.
+        """
+        raise NotImplementedError(f"{self.siem_type} connector does not support profiling")

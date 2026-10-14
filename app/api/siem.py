@@ -4,20 +4,22 @@
 - GET    /api/siem/          — list connections (metadata only, never raw config)
 - GET    /api/siem/{id}      — get one connection's metadata
 - POST   /api/siem/{id}/test — check that a connection is reachable and authenticated
+- POST   /api/siem/{id}/profile — measure what the SIEM can see and store it (admin)
+- GET    /api/siem/{id}/profile — read the latest stored profile (any signed-in user)
 - DELETE /api/siem/{id}      — deactivate a connection (soft delete)
 """
 import time
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import encrypt_config
 from app.core.database import get_db
-from app.core.deps import require_admin
-from app.models import SIEMConnection, User
-from app.schemas import SIEMConnectionCreate, SIEMConnectionResponse, SIEMConnectionTestResult
+from app.core.deps import get_current_user, require_admin
+from app.models import SIEMConnection, SIEMProfile, User
+from app.schemas import SIEMConnectionCreate, SIEMConnectionResponse, SIEMConnectionTestResult, SIEMProfileResponse
 from app.services.connectors.factory import ConnectorError, get_connector
 
 router = APIRouter()
@@ -99,6 +101,62 @@ async def test_siem_connection(
         message="Connection OK" if ok else "Unreachable, authentication failed, or cluster unhealthy",
         latency_ms=latency_ms,
     )
+
+
+@router.post("/{connection_id}/profile", response_model=SIEMProfileResponse)
+async def collect_siem_profile(
+    connection_id: UUID,
+    window_days: int = Query(7, ge=1, le=90, description="days of recent data used for field population"),
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Measure what this SIEM can see (read-only queries) and store the result, replacing the previous one."""
+    connection = (await db.execute(
+        select(SIEMConnection).where(SIEMConnection.id == connection_id)
+    )).scalar_one_or_none()
+    if not connection:
+        raise HTTPException(status_code=404, detail="SIEM connection not found")
+    if not connection.is_active:
+        raise HTTPException(status_code=409, detail="SIEM connection is not active")
+
+    try:
+        connector = get_connector(connection)
+    except ConnectorError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    try:
+        profile = await connector.profile(window_days)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"{connection.name}: {e}")
+
+    row = (await db.execute(
+        select(SIEMProfile).where(SIEMProfile.siem_connection_id == connection_id)
+    )).scalar_one_or_none()
+    if row is None:
+        row = SIEMProfile(siem_connection_id=connection_id)
+        db.add(row)
+    row.profile = profile
+    row.collected_by = current_user.id
+    row.collected_at = func.now()
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+@router.get("/{connection_id}/profile", response_model=SIEMProfileResponse)
+async def get_siem_profile(
+    connection_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Latest stored profile of a connection; 404 if it was never profiled."""
+    row = (await db.execute(
+        select(SIEMProfile).where(SIEMProfile.siem_connection_id == connection_id)
+    )).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="This connection has not been profiled yet")
+    return row
 
 
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)

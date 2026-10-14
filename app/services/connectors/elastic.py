@@ -11,6 +11,7 @@ from typing import List, Optional
 import httpx
 
 from app.services.connectors.base import BaseSIEMConnector
+from app.services.data_profile import build_profile, profile_fields
 
 
 class ElasticConnectionError(Exception):
@@ -140,3 +141,43 @@ class ElasticConnector(BaseSIEMConnector):
         except httpx.RequestError as e:
             raise ElasticConnectionError(f"Elastic connection failed: {e}") from e
         return [hit.get("_source", {}) for hit in response.json().get("hits", {}).get("hits", [])]
+
+    async def profile(self, window_days: int = 7) -> dict:
+        fields = profile_fields(self.siem_type)
+        body = {
+            "size": 0,
+            "track_total_hits": True,
+            "aggs": {
+                "earliest": {"min": {"field": "@timestamp"}},
+                "latest": {"max": {"field": "@timestamp"}},
+                "recent": {
+                    "filter": {"range": {"@timestamp": {"gte": f"now-{int(window_days)}d"}}},
+                    "aggs": {
+                        **{f"f{i}": {"filter": {"exists": {"field": f}}} for i, f in enumerate(fields)},
+                        "top": {"terms": {"field": "event.dataset", "size": 10}},
+                    },
+                },
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{self.cluster_url}/{self.index_pattern}/_search", json=body, headers=self._headers())
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise ElasticConnectionError(
+                f"Elastic profile query failed ({e.response.status_code}): {e.response.text[:300]}") from e
+        except httpx.RequestError as e:
+            raise ElasticConnectionError(f"Elastic connection failed: {e}") from e
+
+        data = response.json()
+        aggs = data["aggregations"]
+        return build_profile(
+            self.siem_type, window_days,
+            total_docs=data["hits"]["total"]["value"],
+            recent_docs=aggs["recent"]["doc_count"],
+            earliest=aggs["earliest"].get("value_as_string"),
+            latest=aggs["latest"].get("value_as_string"),
+            field_counts={f: aggs["recent"][f"f{i}"]["doc_count"] for i, f in enumerate(fields)},
+            top=[(b["key"], b["doc_count"]) for b in aggs["recent"]["top"]["buckets"]],
+        )

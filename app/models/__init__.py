@@ -198,6 +198,25 @@ class Hunt(Base):
 # ─────────────────────────────────────────────────────────────────
 # 5. HUNT RESULTS / FINDINGS
 # ─────────────────────────────────────────────────────────────────
+class SIEMProfile(Base):
+    """Latest data profile of a SIEM connection (services/data_profile.py); one row per connection."""
+    __tablename__ = "siem_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    siem_connection_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("siem_connections.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    profile: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    collected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    collected_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+
+
 class FindingSuppression(Base):
     """An analyst decision: this behaviour (fingerprint) is known benign, hide it in future hunts."""
     __tablename__ = "finding_suppressions"

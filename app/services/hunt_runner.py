@@ -8,13 +8,14 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import FindingSuppression, Hunt, HuntResult, SIEMConnection, SigmaRule
+from app.models import FindingSuppression, Hunt, HuntResult, SIEMConnection, SIEMProfile, SigmaRule
 from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
 from app.services.correlation import Candidate, correlate
 from app.services.grouping import group_events
 from app.services.prioritization import rescore_findings
-from app.services.sigma_engine import convert_sigma_rule, unmapped_fields
+from app.services.data_profile import blind_spots
+from app.services.sigma_engine import convert_sigma_rule, rule_fields, unmapped_fields
 
 
 class HuntRunnerError(Exception):
@@ -151,6 +152,17 @@ class HuntRunner:
         if not connections:
             raise HuntRunnerError("No active SIEM connections found for the given targets")
 
+        profiles = {
+            row.siem_connection_id: row.profile
+            for row in (await self.db.execute(
+                select(SIEMProfile).where(SIEMProfile.siem_connection_id.in_([c.id for c in connections]))
+            )).scalars().all()
+        }
+        try:
+            used_fields = rule_fields(rule_yaml)
+        except Exception:
+            used_fields = set()
+
         # Build tasks. Anything that prevents a SIEM from being queried is recorded in
         # `notes`, never dropped silently: "0 hits" must not hide "could not look".
         tasks = []
@@ -173,6 +185,14 @@ class HuntRunner:
                 notes.append(
                     f"{conn.name} ({connector.siem_type}): not runnable, no field for "
                     f"{', '.join(missing)} in this SIEM's data"
+                )
+                continue
+
+            blind = blind_spots(used_fields, connector.siem_type, profiles.get(conn.id))
+            if blind:
+                notes.append(
+                    f"{conn.name} ({connector.siem_type}): blind spot, no recent events carry "
+                    f"{'; '.join(blind)} (see this connection's data profile)"
                 )
                 continue
 
