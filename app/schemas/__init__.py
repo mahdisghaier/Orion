@@ -73,6 +73,7 @@ class SIEMConnectionCreate(SIEMConnectionBase):
     # Config is flexible JSON — different per SIEM type
     # Sentinel: {tenant_id, client_id, client_secret, workspace_id}
     # Elastic:  {url, api_key, index_pattern}
+    # Wazuh:    {url, username, password, verify_ssl, index_pattern, host_aliases}
     config: dict
 
 

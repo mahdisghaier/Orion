@@ -10,6 +10,7 @@
         <select v-model="filters.siem_type" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
           <option value="">All SIEMs</option>
           <option value="elastic">Elastic</option>
+          <option value="wazuh">Wazuh</option>
           <option value="sentinel">Sentinel</option>
         </select>
         <select v-model="filters.analyst_status" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
@@ -54,7 +55,7 @@
           >
             <td class="px-4 py-3 text-gray-600">{{ formatTime(finding.event_time) }}</td>
             <td class="px-4 py-3">
-              <span :class="finding.siem_type === 'elastic' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'" class="px-2 py-0.5 rounded text-xs font-medium">
+              <span :class="siemBadge(finding.siem_type)" class="px-2 py-0.5 rounded text-xs font-medium">
                 {{ finding.siem_type }}
               </span>
             </td>
@@ -160,6 +161,12 @@ function prevPage() {
     filters.page--
     loadFindings()
   }
+}
+
+function siemBadge(siem: string): string {
+  if (siem === 'elastic') return 'bg-yellow-100 text-yellow-800'
+  if (siem === 'wazuh') return 'bg-green-100 text-green-800'
+  return 'bg-blue-100 text-blue-800'
 }
 
 function formatTime(ts: string): string {

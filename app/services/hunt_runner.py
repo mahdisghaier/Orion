@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Hunt, HuntResult, SIEMConnection, SigmaRule
 from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
-from app.services.sigma_engine import convert_sigma_rule
+from app.services.sigma_engine import convert_sigma_rule, unmapped_fields
 
 
 class HuntRunnerError(Exception):
@@ -57,6 +57,8 @@ class HuntRunner:
             queries["sentinel"] = conversion["kql"]
         if conversion.get("eql"):
             queries["elastic"] = conversion["eql"]
+        if conversion.get("lucene"):
+            queries["wazuh"] = conversion["lucene"]
 
         if not queries:
             errors = []
@@ -64,6 +66,8 @@ class HuntRunner:
                 errors.append(f"KQL: {conversion['kql_error']}")
             if conversion.get("eql_error"):
                 errors.append(f"EQL: {conversion['eql_error']}")
+            if conversion.get("lucene_error"):
+                errors.append(f"Lucene: {conversion['lucene_error']}")
             raise HuntRunnerError(f"Sigma conversion failed: {'; '.join(errors)}")
 
         # 3. Create the hunt record
@@ -81,7 +85,7 @@ class HuntRunner:
 
         # 4. Run the hunt
         try:
-            await self._run_hunt(hunt, mitre_tactics, mitre_techniques)
+            await self._run_hunt(hunt, rule_yaml, mitre_tactics, mitre_techniques)
         except Exception as e:
             hunt.status = "failed"
             hunt.error = str(e)
@@ -92,7 +96,7 @@ class HuntRunner:
         await self.db.refresh(hunt)
         return hunt
 
-    async def _run_hunt(self, hunt: Hunt, mitre_tactics: List[str], mitre_techniques: List[str]):
+    async def _run_hunt(self, hunt: Hunt, rule_yaml: str, mitre_tactics: List[str], mitre_techniques: List[str]):
         hunt.status = "running"
         hunt.started_at = datetime.now(timezone.utc)
         await self.db.flush()
@@ -109,46 +113,59 @@ class HuntRunner:
         if not connections:
             raise HuntRunnerError("No active SIEM connections found for the given targets")
 
-        # Build tasks
+        # Build tasks. Anything that prevents a SIEM from being queried is recorded in
+        # `notes`, never dropped silently: "0 hits" must not hide "could not look".
         tasks = []
         conn_map = {}
+        notes = []
         for conn in connections:
             try:
                 connector = get_connector(conn)
             except ConnectorError as e:
+                notes.append(f"{conn.name} ({conn.type}): {e}")
                 continue
 
-            query = None
-            if connector.siem_type == "elastic" and "elastic" in hunt.queries:
-                query = hunt.queries["elastic"]
-            elif connector.siem_type == "sentinel" and "sentinel" in hunt.queries:
-                query = hunt.queries["sentinel"]
-
+            query = hunt.queries.get(connector.siem_type)
             if not query:
+                notes.append(f"{conn.name} ({connector.siem_type}): no query could be generated for this SIEM")
                 continue
 
-            tasks.append(connector.run_query(query, max_results=1000))
+            missing = unmapped_fields(rule_yaml, connector.siem_type)
+            if missing:
+                notes.append(
+                    f"{conn.name} ({connector.siem_type}): not runnable, no field for "
+                    f"{', '.join(missing)} in this SIEM's data"
+                )
+                continue
+
+            tasks.append(connector.run_query(query, max_results=1000, time_range=hunt.time_range))
             conn_map[len(tasks) - 1] = (conn, connector.siem_type)
 
         if not tasks:
-            raise HuntRunnerError("No runnable queries for the available SIEM connections")
+            raise HuntRunnerError(
+                "No runnable queries for the selected SIEM connections: " + "; ".join(notes)
+                if notes else "No runnable queries for the selected SIEM connections"
+            )
 
         # Run all queries in parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results + persist findings
         total_hits = 0
-        errors = []
+        errors = list(notes)
+        failed_queries = 0
 
         for idx, result in enumerate(results):
             conn, siem_type = conn_map[idx]
 
             if isinstance(result, Exception):
                 errors.append(f"{conn.name} ({siem_type}): {result}")
+                failed_queries += 1
                 continue
 
             if not isinstance(result, list):
                 errors.append(f"{conn.name} ({siem_type}): unexpected result type")
+                failed_queries += 1
                 continue
 
             for raw_event in result:
@@ -166,7 +183,8 @@ class HuntRunner:
                 self.db.add(finding)
                 total_hits += 1
 
-        hunt.status = "completed"
+        # Every SIEM that was queried failed: this is a failed hunt, not a clean one.
+        hunt.status = "failed" if failed_queries == len(tasks) else "completed"
         hunt.completed_at = datetime.now(timezone.utc)
         hunt.total_hits = total_hits
         if errors:

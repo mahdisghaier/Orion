@@ -2,6 +2,7 @@
 from app.models import SIEMConnection
 from app.services.connectors.base import BaseSIEMConnector
 from app.services.connectors.elastic import ElasticConnector
+from app.services.connectors.wazuh import WazuhConnector
 
 try:
     from app.core.crypto import decrypt_config
@@ -28,6 +29,18 @@ def get_connector(conn: SIEMConnection) -> BaseSIEMConnector:
             cluster_url=config.get("url", "http://localhost:9200"),
             api_key=config.get("api_key"),
             index_pattern=config.get("index_pattern", "logs-*"),
+        )
+    elif conn.type == "wazuh":
+        missing = [k for k in ("url", "username", "password") if not config.get(k)]
+        if missing:
+            raise ConnectorError(f"Wazuh connection {conn.name!r} is missing config: {', '.join(missing)}")
+        return WazuhConnector(
+            url=config["url"],
+            username=config["username"],
+            password=config["password"],
+            verify_ssl=bool(config.get("verify_ssl", True)),
+            index_pattern=config.get("index_pattern", "wazuh-alerts-*"),
+            host_aliases=config.get("host_aliases"),
         )
     elif conn.type == "sentinel":
         raise ConnectorError("Sentinel connector not yet implemented")

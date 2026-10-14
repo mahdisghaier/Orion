@@ -51,6 +51,7 @@ class ElasticConnector(BaseSIEMConnector):
         self,
         query: str,
         max_results: int = 1000,
+        time_range: Optional[dict] = None,
     ) -> List[dict]:
         """Execute an EQL query, return ECS-normalized events as dicts.
 
@@ -62,6 +63,13 @@ class ElasticConnector(BaseSIEMConnector):
             "query": query,
             "size": max_results,
         }
+        bounds = {}
+        if time_range and time_range.get("from"):
+            bounds["gte"] = time_range["from"]
+        if time_range and time_range.get("to"):
+            bounds["lte"] = time_range["to"]
+        if bounds:
+            payload["filter"] = {"range": {"@timestamp": bounds}}
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:

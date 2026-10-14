@@ -72,7 +72,7 @@ class SIEMConnection(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(
-        Text, nullable=False, comment="sentinel | elastic"
+        Text, nullable=False, comment="sentinel | elastic | wazuh"
     )
     config_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(

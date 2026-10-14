@@ -3,7 +3,7 @@ import api from './client'
 export interface Finding {
   id: string
   hunt_id: string
-  siem_type: 'elastic' | 'sentinel'
+  siem_type: 'elastic' | 'sentinel' | 'wazuh'
   event_time: string
   source_ip: string | null
   destination_ip: string | null

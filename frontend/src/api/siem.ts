@@ -3,7 +3,7 @@ import api from './client'
 export interface SIEMConnection {
   id: string
   name: string
-  type: 'sentinel' | 'elastic'
+  type: 'sentinel' | 'elastic' | 'wazuh'
   is_active: boolean
   created_at: string
 }

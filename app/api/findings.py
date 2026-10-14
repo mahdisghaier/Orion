@@ -23,7 +23,7 @@ router = APIRouter()
 async def list_findings(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    siem_type: Optional[str] = Query(None, pattern="^(sentinel|elastic)$"),
+    siem_type: Optional[str] = Query(None, pattern="^(sentinel|elastic|wazuh)$"),
     analyst_status: Optional[str] = Query(None, pattern="^(new|validated|false_positive|escalated)$"),
     source_ip: Optional[str] = Query(None),
     host_name: Optional[str] = Query(None),

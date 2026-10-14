@@ -36,7 +36,7 @@
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">2. Sigma Rule (YAML)</h2>
         <p class="text-sm text-gray-500 mb-3">
-          Paste a Sigma rule below. The backend will convert it to KQL (Sentinel) and EQL (Elastic) automatically.
+          Paste a Sigma rule below. The backend will convert it to the native query of each selected SIEM (EQL for Elastic, Lucene for Wazuh) automatically.
         </p>
         <textarea
           v-model="ruleYaml"

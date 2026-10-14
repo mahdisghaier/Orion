@@ -50,6 +50,13 @@
             </div>
             <pre class="bg-gray-900 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">{{ hunt.queries.elastic }}</pre>
           </div>
+          <div v-if="hunt.queries.wazuh">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-medium">wazuh</span>
+              <span class="text-xs text-gray-500">Lucene</span>
+            </div>
+            <pre class="bg-gray-900 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">{{ hunt.queries.wazuh }}</pre>
+          </div>
           <div v-if="hunt.queries.sentinel">
             <div class="flex items-center gap-2 mb-2">
               <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">sentinel</span>
