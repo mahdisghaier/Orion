@@ -35,6 +35,13 @@
     <!-- Loading state -->
     <div v-if="loading" class="text-center py-12 text-gray-500">Loading findings...</div>
 
+    <!-- Load failure: never present "could not load" as "nothing found" -->
+    <div v-else-if="loadError" class="text-center py-12">
+      <p class="text-red-600 font-medium">Could not load findings.</p>
+      <p class="text-sm text-gray-500 mt-1">{{ loadError }}</p>
+      <button @click="loadFindings" class="mt-4 px-4 py-2 border rounded text-sm hover:bg-gray-50">Retry</button>
+    </div>
+
     <!-- Empty state -->
     <div v-else-if="findings.length === 0" class="text-center py-12">
       <p class="text-gray-500">No findings yet.</p>
@@ -148,6 +155,7 @@ import { getFindings, type Finding } from '@/api/findings'
 const findings = ref<Finding[]>([])
 const total = ref(0)
 const loading = ref(true)
+const loadError = ref('')
 const hasNext = ref(false)
 
 const filters = reactive({
@@ -161,6 +169,7 @@ const filters = reactive({
 
 async function loadFindings() {
   loading.value = true
+  loadError.value = ''
   try {
     const data = await getFindings({
       page: filters.page,
@@ -175,6 +184,10 @@ async function loadFindings() {
     hasNext.value = data.has_next
   } catch (e) {
     console.error('Failed to load findings:', e)
+    findings.value = []
+    total.value = 0
+    loadError.value = (e as any)?.response?.data?.detail
+      || 'The ORION backend did not answer. Is it running on port 8000?'
   } finally {
     loading.value = false
   }
