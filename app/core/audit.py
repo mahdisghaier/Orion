@@ -21,8 +21,8 @@ from app.models import AuditLog
 
 
 # [explain] Writes one line in the diary: who did what, to which thing, when, and from which address.
-# [explain] Note: it saves (commits) everything pending in the current database session too, so the line is
-# [explain] not kept separately from the rest of the request, whatever the docstring below hopes.
+# [explain] The line joins the caller's database transaction and is saved by the caller's commit, so the diary
+# [explain] and the action it describes are saved together or not at all (no diary line for something that failed).
 async def log_action(
     db: AsyncSession,
     *,
@@ -33,8 +33,8 @@ async def log_action(
     metadata: Optional[dict] = None,
     request: Optional[Request] = None,
 ) -> None:
-    """Write a single audit log entry. Commits within its own transaction
-    so audit records persist even if the main request fails."""
+    """Add one audit log entry to the caller's transaction. The CALLER commits, so the entry and
+    the action it records succeed or fail together."""
     entry = AuditLog(
         user_id=user_id,
         action=action,
@@ -45,4 +45,3 @@ async def log_action(
         user_agent=request.headers.get("User-Agent", "")[:500] if request else None,
     )
     db.add(entry)
-    await db.commit()

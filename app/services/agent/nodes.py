@@ -1,4 +1,5 @@
 """LangGraph nodes — each is a step in the agent's state machine."""
+import asyncio
 import json
 import yaml
 from typing import Dict, Any, List
@@ -14,7 +15,7 @@ async def understand_intent(state: ChatState) -> ChatState:
     llm = get_llm()
     system_prompt = "You are ORION, a threat hunting assistant for SOC analysts. Your job is to understand what the analyst wants to hunt for. Respond in JSON format: {\"intent\": \"<brief description>\", \"hunting_type\": \"detection\" or \"investigation\", \"suggested_targets\": [\"what to look for\"]}"
     prompt = 'Analyst message: "' + user_message + '". What is the analyst trying to do? Extract the intent concisely.'
-    response, audit = llm_call_with_audit(llm, prompt, system_prompt, "understand_intent")
+    response, audit = await asyncio.to_thread(llm_call_with_audit, llm, prompt, system_prompt, "understand_intent")
     try:
         clean = response.strip()
         if clean.startswith("```"):
@@ -38,7 +39,7 @@ async def generate_sigma(state: ChatState) -> ChatState:
     llm = get_llm()
     system_prompt = "You are a Sigma rule expert. Generate BROAD rules that match on process NAME or BINARY PATH only. Do NOT add CommandLine conditions. Use a single selection with condition: selection. For Linux logs use logsource product: linux, category: process_creation. Include MITRE tags. Output ONLY the YAML in a yaml code block. Example: match Image|endswith with values like /nc /ncat /netcat and use condition: selection."
     prompt = 'Generate a Sigma rule for this hunting intent: "' + intent + '". The rule should be BROAD. Output the YAML only in a yaml code block.'
-    response, audit = llm_call_with_audit(llm, prompt, system_prompt, "generate_sigma")
+    response, audit = await asyncio.to_thread(llm_call_with_audit, llm, prompt, system_prompt, "generate_sigma")
     sigma_yaml = extract_yaml_from_response(response)
     try:
         parsed = yaml.safe_load(sigma_yaml)
@@ -102,7 +103,7 @@ async def explain_findings(state: ChatState) -> ChatState:
     system_prompt = "You are a threat hunting expert explaining findings to a SOC analyst. Analyze the findings and explain what was found in plain English, state why it is suspicious, reference MITRE techniques, and suggest 2-3 follow-up queries. Keep it concise with bullet points. Each finding carries a priority score (0-100) computed by ORION from its evidence, with the reasons listed. Explain that ranking in plain words using ONLY those reasons. Never compute, change, dispute or invent a score or a ranking."
     findings_summary = "\n".join(["- " + str(i+1) + ". Process: " + str(f.get('process_name', 'unknown')) + ", Cmd: " + str(f.get('process_command_line', 'N/A')) + ", Host: " + str(f.get('host_name', 'unknown')) + ", User: " + str(f.get('user_name', 'unknown')) + ", MITRE: " + str(f.get('mitre_techniques', [])) + ", Priority: " + str(f.get('priority_score')) + " (" + "; ".join(str(b['points']) + " " + b['factor'] + ": " + b['detail'] for b in (f.get('priority_breakdown') or [])) + ")" for i, f in enumerate(findings[:10])])
     prompt = "Original analyst intent: " + intent + "\n\nHunt returned " + str(len(findings)) + " finding(s):\n\n" + findings_summary + "\n\nExplain what was found and suggest follow-up queries."
-    response, audit = llm_call_with_audit(llm, prompt, system_prompt, "explain_findings")
+    response, audit = await asyncio.to_thread(llm_call_with_audit, llm, prompt, system_prompt, "explain_findings")
     state["explanation"] = response
     state["llm_audit_entries"] = state.get("llm_audit_entries", []) + [audit]
     state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": response}]

@@ -19,6 +19,33 @@ from app.services.agent.nodes import run_hunt, explain_findings
 router = APIRouter()
 
 
+# [explain] Class names of the errors that mean "the AI service cannot answer right now" (quota, network, wrong key...).
+_AI_DOWN = {"ResourceExhausted", "ServiceUnavailable", "DeadlineExceeded", "Unauthenticated", "PermissionDenied",
+            "LLMUnavailable", "RetryError", "InvalidArgument"}
+
+
+# [explain] True when an error means the AI service itself is down (not a bug of ours), so we can answer "AI unavailable" instead of a scary crash.
+def _ai_unavailable(e: Exception) -> bool:
+    return type(e).__name__ in _AI_DOWN
+
+
+# [explain] Saves every AI call in llm_audit, optionally linked to the hunt it explains.
+# [explain] The caller commits, together with the audit-diary line.
+def _save_audits(db: AsyncSession, user: User, entries: list, hunt_id: Optional[UUID] = None) -> None:
+    for audit in entries:
+        db.add(LLMAudit(
+            user_id=user.id,
+            hunt_id=hunt_id,
+            prompt=audit["prompt"][:5000],
+            retrieved_context={"context": audit["context"], "system_prompt": audit["system_prompt"][:1000]},
+            raw_response=audit["response"][:10000],
+            parsed_response={"text": audit["response"]},
+            model=audit["model"],
+            provider=audit["provider"],
+            latency_ms=audit["latency_ms"],
+        ))
+
+
 class ChatMessageRequest(BaseModel):
     message: str
     siem_targets: List[UUID]
@@ -80,19 +107,8 @@ async def send_message(
         
         # Persist LLM audit entries
         # [explain] Every question we asked the AI and every answer is saved in llm_audit, so a lead can check later what it said.
-        for audit in result.get("llm_audit_entries", []):
-            llm_entry = LLMAudit(
-                user_id=current_user.id,
-                prompt=audit["prompt"][:5000],
-                retrieved_context={"context": audit["context"], "system_prompt": audit["system_prompt"][:1000]},
-                raw_response=audit["response"][:10000],
-                parsed_response={"text": audit["response"]},
-                model=audit["model"],
-                provider=audit["provider"],
-                latency_ms=audit["latency_ms"],
-            )
-            db.add(llm_entry)
-        
+        _save_audits(db, current_user, result.get("llm_audit_entries", []))
+
         await log_action(
             db, user_id=current_user.id, action="chat.message",
             target_type="user", target_id=current_user.id,
@@ -115,13 +131,15 @@ async def send_message(
         )
         
     except Exception as e:
+        if _ai_unavailable(e):
+            raise HTTPException(status_code=503, detail=f"The AI service is unavailable right now ({type(e).__name__}). "
+                                                       "Try again later, or use Investigations, which work without it.")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
 # [explain] The analyst's answer to "shall I run this?". Yes = run the hunt and let the AI explain the results.
-# [explain] Known gap: the explanation's AI call is not saved to llm_audit here, only the /message route saves its calls.
 @router.post("/confirm", response_model=ChatMessageResponse)
 async def confirm_hunt(
     request: ConfirmRequest,
@@ -181,7 +199,17 @@ async def confirm_hunt(
         
         # If hunt succeeded, explain the findings
         if state.get("hunt_status") == "completed" and state.get("findings"):
-            state = await explain_findings(state)
+            # [explain] The hunt already worked. If only the AI explanation fails, keep the findings and say so.
+            try:
+                state = await explain_findings(state)
+            except Exception as e:
+                state["explanation"] = (f"The AI explanation is unavailable ({type(e).__name__}). "
+                                        "The findings above are complete; open one to see why it was ranked where it is.")
+                state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": state["explanation"]}]
+
+        # [explain] Save the explanation's AI call (it used to be lost here), linked to the hunt it explains.
+        _save_audits(db, current_user, state.get("llm_audit_entries", []),
+                     UUID(state["hunt_id"]) if state.get("hunt_id") else None)
         
         await log_action(
             db, user_id=current_user.id, action="chat.confirm_hunt",

@@ -68,7 +68,7 @@ async def live_connectors() -> list:
                 log(f"skipping {conn.name}: {type(e).__name__}")
                 continue
             if profile.get("recent_docs"):
-                live.append({"name": conn.name, "type": conn.type, "connector": connector, "profile": profile})
+                live.append({"id": conn.id, "name": conn.name, "type": conn.type, "connector": connector, "profile": profile})
     return live
 
 
