@@ -18,6 +18,10 @@
           <option value="true">Seen by 2+ SIEMs</option>
           <option value="false">Single SIEM only</option>
         </select>
+        <label class="flex items-center gap-2 px-3 py-2 border rounded text-sm bg-white cursor-pointer">
+          <input type="checkbox" v-model="filters.include_suppressed" @change="loadFindings" />
+          Show suppressed
+        </label>
         <select v-model="filters.analyst_status" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
           <option value="">All Status</option>
           <option value="new">New</option>
@@ -62,6 +66,12 @@
               {{ formatTime(finding.last_seen || finding.event_time) }}
               <div v-if="finding.occurrence_count > 1" class="text-xs text-gray-500 mt-1">
                 seen {{ finding.occurrence_count }}&times; since {{ formatTime(finding.first_seen || finding.event_time) }}
+              </div>
+              <div v-if="finding.previous_hunts > 0" class="text-xs text-gray-500 mt-1">
+                also in {{ finding.previous_hunts }} earlier hunt{{ finding.previous_hunts > 1 ? 's' : '' }}
+              </div>
+              <div v-if="finding.suppressed" class="text-xs mt-1">
+                <span class="bg-gray-200 text-gray-700 px-2 py-0.5 rounded">suppressed &middot; known benign</span>
               </div>
             </td>
             <td class="px-4 py-3">
@@ -146,6 +156,7 @@ const filters = reactive({
   siem_type: '',
   analyst_status: '',
   corroborated: '',
+  include_suppressed: false,
 })
 
 async function loadFindings() {
@@ -157,6 +168,7 @@ async function loadFindings() {
       siem_type: filters.siem_type || undefined,
       analyst_status: filters.analyst_status || undefined,
       corroborated: filters.corroborated === '' ? undefined : filters.corroborated === 'true',
+      include_suppressed: filters.include_suppressed,
     })
     findings.value = data.items
     total.value = data.total

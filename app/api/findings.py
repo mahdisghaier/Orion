@@ -4,18 +4,18 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
-from app.models import HuntResult, Incident, SIEMConnection, User
-from app.services.corroboration import attach_corroboration
+from app.models import FindingSuppression, HuntResult, Incident, SIEMConnection, User
+from app.services.corroboration import enrich_findings
 from app.services.connectors.factory import ConnectorError, get_connector
 from app.services.ecs import extract_ecs_fields, get_nested
 from app.schemas import (
-    ContextEvent, FindingContextResponse,
+    ContextEvent, FindingContextResponse, FindingSuppress, SuppressionResult,
     HuntResultResponse, FindingUpdate, FindingEscalate,
     IncidentResponse, PaginatedResponse,
 )
@@ -33,6 +33,7 @@ async def list_findings(
     host_name: Optional[str] = Query(None),
     hunt_id: Optional[UUID] = Query(None),
     corroborated: Optional[bool] = Query(None, description="true: only findings that 2+ SIEMs reported"),
+    include_suppressed: bool = Query(False, description="also list findings hidden by a suppression"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -55,6 +56,9 @@ async def list_findings(
     if hunt_id:
         query = query.where(HuntResult.hunt_id == hunt_id)
         count_query = count_query.where(HuntResult.hunt_id == hunt_id)
+    if not include_suppressed:
+        query = query.where(HuntResult.suppression_id.is_(None))
+        count_query = count_query.where(HuntResult.suppression_id.is_(None))
     if corroborated is not None:
         cond = HuntResult.correlation_id.is_not(None) if corroborated else HuntResult.correlation_id.is_(None)
         query = query.where(cond)
@@ -65,7 +69,7 @@ async def list_findings(
     result = await db.execute(
         query.order_by(HuntResult.event_time.desc()).offset(offset).limit(page_size)
     )
-    findings = await attach_corroboration(db, result.scalars().all())
+    findings = await enrich_findings(db, result.scalars().all())
 
     return {
         "items": [HuntResultResponse.model_validate(f) for f in findings],
@@ -88,7 +92,7 @@ async def get_finding(
     )).scalar_one_or_none()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
-    await attach_corroboration(db, [finding])
+    await enrich_findings(db, [finding])
     return finding
 
 
@@ -167,6 +171,101 @@ async def get_finding_context(
     )
 
 
+@router.post("/{finding_id}/suppress", response_model=SuppressionResult)
+async def suppress_finding(
+    finding_id: UUID,
+    payload: FindingSuppress,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_l2_plus),
+):
+    """Declare a finding's pattern known benign. L2+ only.
+
+    Future hunts flag the same fingerprint as suppressed (hidden by default, never deleted), and
+    existing UNREVIEWED findings with that fingerprint are flagged now. Findings an analyst
+    validated or escalated are never touched, and such a finding cannot be suppressed.
+    """
+    finding = (await db.execute(
+        select(HuntResult).where(HuntResult.id == finding_id)
+    )).scalar_one_or_none()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+    if not finding.fingerprint:
+        raise HTTPException(status_code=422, detail="Legacy finding without a fingerprint: re-run the hunt first")
+    if finding.analyst_status in ("validated", "escalated"):
+        raise HTTPException(status_code=409, detail=f"A {finding.analyst_status} finding cannot be suppressed")
+
+    suppression = (await db.execute(
+        select(FindingSuppression).where(FindingSuppression.fingerprint == finding.fingerprint)
+    )).scalar_one_or_none()
+    if suppression is None:
+        suppression = FindingSuppression(fingerprint=finding.fingerprint)
+        db.add(suppression)
+    suppression.comment = payload.comment
+    suppression.created_by = current_user.id
+    suppression.is_active = True
+    suppression.revoked_by = None
+    suppression.revoked_at = None
+    await db.flush()
+
+    result = await db.execute(
+        update(HuntResult)
+        .where(
+            HuntResult.fingerprint == finding.fingerprint,
+            HuntResult.suppression_id.is_(None),
+            HuntResult.analyst_status.in_(("new", "false_positive")),
+        )
+        .values(suppression_id=suppression.id)
+    )
+    await log_action(
+        db, user_id=current_user.id, action="finding.suppress",
+        target_type="finding", target_id=finding_id,
+        metadata={"fingerprint": finding.fingerprint, "comment": payload.comment, "affected": result.rowcount},
+        request=request,
+    )
+    await db.commit()
+    return SuppressionResult(suppression_id=suppression.id, affected=result.rowcount)
+
+
+@router.delete("/{finding_id}/suppress", response_model=SuppressionResult)
+async def unsuppress_finding(
+    finding_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_l2_plus),
+):
+    """Revoke the suppression covering this finding; everything it hid becomes visible again."""
+    finding = (await db.execute(
+        select(HuntResult).where(HuntResult.id == finding_id)
+    )).scalar_one_or_none()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+
+    suppression = (await db.execute(
+        select(FindingSuppression).where(
+            FindingSuppression.fingerprint == finding.fingerprint,
+            FindingSuppression.is_active.is_(True),
+        )
+    )).scalar_one_or_none() if finding.fingerprint else None
+    if suppression is None:
+        raise HTTPException(status_code=404, detail="This finding is not suppressed")
+
+    suppression.is_active = False
+    suppression.revoked_by = current_user.id
+    suppression.revoked_at = datetime.now(timezone.utc)
+    result = await db.execute(
+        update(HuntResult).where(HuntResult.suppression_id == suppression.id).values(suppression_id=None)
+    )
+    await log_action(
+        db, user_id=current_user.id, action="finding.unsuppress",
+        target_type="finding", target_id=finding_id,
+        metadata={"fingerprint": finding.fingerprint, "affected": result.rowcount},
+        request=request,
+    )
+    await db.commit()
+    return SuppressionResult(suppression_id=suppression.id, affected=result.rowcount)
+
+
 @router.patch("/{finding_id}", response_model=HuntResultResponse)
 async def update_finding(
     finding_id: UUID,
@@ -202,7 +301,7 @@ async def update_finding(
         await db.commit()
         await db.refresh(finding)
 
-    await attach_corroboration(db, [finding])
+    await enrich_findings(db, [finding])
     return finding
 
 

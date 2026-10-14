@@ -106,6 +106,15 @@
           >
             Escalate to Incident
           </button>
+          <button
+            v-if="!finding.suppressed && finding.analyst_status !== 'validated' && finding.analyst_status !== 'escalated'"
+            @click="showSuppressModal = true"
+            :disabled="saving"
+            class="px-4 py-2 bg-white border border-gray-400 hover:bg-gray-50 text-gray-800 rounded text-sm disabled:opacity-50"
+            title="Hide this behaviour in future hunts (reversible)"
+          >
+            Suppress this pattern
+          </button>
         </div>
 
         <!-- Existing review info -->
@@ -126,6 +135,27 @@
           <strong>Analyst comment:</strong> {{ finding.analyst_comment }}
         </div>
       </div>
+
+      <!-- History + suppression state -->
+      <div v-if="finding.suppressed" class="bg-gray-100 border border-gray-300 rounded-lg p-4 flex justify-between items-center gap-4">
+        <div>
+          <p class="text-sm font-medium text-gray-800">Suppressed: an analyst declared this pattern known benign.</p>
+          <p class="text-xs text-gray-600 mt-1">It is hidden from the default findings list. Nothing was deleted.</p>
+        </div>
+        <button
+          v-if="auth.isL2Plus"
+          @click="doUnsuppress"
+          :disabled="saving"
+          class="px-3 py-1.5 bg-white border border-gray-400 rounded text-sm disabled:opacity-50 whitespace-nowrap"
+        >
+          Revoke suppression
+        </button>
+      </div>
+      <div v-if="finding.previous_hunts > 0" class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+        Not new: this same behaviour was already found in {{ finding.previous_hunts }} earlier hunt{{ finding.previous_hunts > 1 ? 's' : '' }},
+        first seen {{ formatTime(finding.known_since) }}.
+      </div>
+      <div v-if="suppressNote" class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">{{ suppressNote }}</div>
 
       <!-- Corroboration: other SIEMs that reported the same behaviour in this hunt -->
       <div v-if="finding.corroborated_by?.length" class="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
@@ -217,6 +247,34 @@
     </div>
 
     <!-- Escalate modal -->
+    <div v-if="showSuppressModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h2 class="text-xl font-bold mb-2">Suppress this pattern</h2>
+        <p class="text-sm text-gray-600 mb-4">
+          Future hunts will flag this exact behaviour (same SIEM, host, process, command line, user and action)
+          as known benign and hide it by default. Unreviewed findings with the same pattern are hidden now.
+          Validated or escalated findings are never hidden. You can revoke this at any time.
+        </p>
+        <label class="block text-xs uppercase text-gray-500 mb-2">Why is it benign?</label>
+        <textarea
+          v-model="suppressComment"
+          rows="3"
+          class="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-[#2d7ab3]"
+          placeholder="e.g., Lab listener started by the team for the demo"
+        ></textarea>
+        <div class="flex justify-end gap-2 mt-6">
+          <button @click="showSuppressModal = false" class="px-4 py-2 border rounded text-sm hover:bg-gray-50">Cancel</button>
+          <button
+            @click="doSuppress"
+            :disabled="saving"
+            class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded text-sm disabled:opacity-50"
+          >
+            Suppress pattern
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showEscalateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <h2 class="text-xl font-bold mb-4">Escalate to Incident</h2>
@@ -261,7 +319,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
-  getFinding, updateFinding, escalateFinding, getFindingContext,
+  getFinding, updateFinding, escalateFinding, getFindingContext, suppressFinding, unsuppressFinding,
   type Finding, type FindingContext,
 } from '@/api/findings'
 
@@ -278,6 +336,41 @@ const showRawEvent = ref(false)
 const showEscalateModal = ref(false)
 const escalateTitle = ref('')
 const escalateSeverity = ref('medium')
+
+const showSuppressModal = ref(false)
+const suppressComment = ref('')
+const suppressNote = ref('')
+
+async function doSuppress() {
+  if (!finding.value) return
+  saving.value = true
+  try {
+    const r = await suppressFinding(finding.value.id, suppressComment.value)
+    suppressNote.value = `Pattern suppressed. ${r.affected} unreviewed finding(s) flagged as known benign.`
+    showSuppressModal.value = false
+    suppressComment.value = ''
+    await loadFinding()
+  } catch (e: any) {
+    error.value = e.response?.data?.detail || 'Failed to suppress pattern'
+    showSuppressModal.value = false
+  } finally {
+    saving.value = false
+  }
+}
+
+async function doUnsuppress() {
+  if (!finding.value) return
+  saving.value = true
+  try {
+    const r = await unsuppressFinding(finding.value.id)
+    suppressNote.value = `Suppression revoked. ${r.affected} finding(s) are visible again.`
+    await loadFinding()
+  } catch (e: any) {
+    error.value = e.response?.data?.detail || 'Failed to revoke suppression'
+  } finally {
+    saving.value = false
+  }
+}
 
 const ctx = ref<FindingContext | null>(null)
 const ctxLoading = ref(false)

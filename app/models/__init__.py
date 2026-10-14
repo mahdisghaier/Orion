@@ -198,6 +198,28 @@ class Hunt(Base):
 # ─────────────────────────────────────────────────────────────────
 # 5. HUNT RESULTS / FINDINGS
 # ─────────────────────────────────────────────────────────────────
+class FindingSuppression(Base):
+    """An analyst decision: this behaviour (fingerprint) is known benign, hide it in future hunts."""
+    __tablename__ = "finding_suppressions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    fingerprint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
+    revoked_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class HuntResult(Base):
     __tablename__ = "hunt_results"
 
@@ -231,6 +253,10 @@ class HuntResult(Base):
     # Findings of the same hunt that different SIEMs reported for the same behaviour share this id
     # (see services/correlation.py).
     correlation_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Set while an active suppression covers this finding's fingerprint (known benign, hidden by default)
+    suppression_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("finding_suppressions.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Full ECS event (flexible, for display + AI analysis)
     ecs_event: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -272,6 +298,7 @@ class HuntResult(Base):
         Index("idx_results_hunt", "hunt_id"),
         Index("idx_results_fingerprint", "fingerprint"),
         Index("idx_results_correlation", "correlation_id"),
+        Index("idx_results_suppression", "suppression_id"),
         Index("idx_results_time_desc", "event_time", postgresql_ops={"event_time": "DESC"}),
         Index("idx_results_siem", "siem_type"),
         Index("idx_results_status", "analyst_status"),
@@ -281,6 +308,10 @@ class HuntResult(Base):
         Index("idx_results_ecs", "ecs_event", postgresql_using="gin"),
         Index("idx_results_mitre", "mitre_techniques", postgresql_using="gin"),
     )
+
+    @property
+    def suppressed(self) -> bool:
+        return self.suppression_id is not None
 
     # Relationships
     hunt: Mapped["Hunt"] = relationship(back_populates="results")

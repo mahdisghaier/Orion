@@ -8,7 +8,7 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Hunt, HuntResult, SIEMConnection, SigmaRule
+from app.models import FindingSuppression, Hunt, HuntResult, SIEMConnection, SigmaRule
 from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
 from app.services.correlation import Candidate, correlate
@@ -233,6 +233,19 @@ class HuntRunner:
         ])
         for finding, correlation_id in zip(findings, ids):
             finding.correlation_id = correlation_id
+
+        # Behaviour an analyst already declared benign stays flagged, so it is not triaged again
+        fingerprints = {f.fingerprint for f in findings}
+        if fingerprints:
+            rows = (await self.db.execute(
+                select(FindingSuppression.id, FindingSuppression.fingerprint).where(
+                    FindingSuppression.fingerprint.in_(fingerprints),
+                    FindingSuppression.is_active.is_(True),
+                )
+            )).all()
+            suppressed = {fp: sid for sid, fp in rows}
+            for finding in findings:
+                finding.suppression_id = suppressed.get(finding.fingerprint)
 
         # Every SIEM that was queried failed: this is a failed hunt, not a clean one.
         hunt.status = "failed" if failed_queries == len(tasks) else "completed"

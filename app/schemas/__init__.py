@@ -195,6 +195,10 @@ class HuntResultResponse(BaseModel):
     last_seen: Optional[datetime] = None
     correlation_id: Optional[str] = None
     corroborated_by: List[CorroboratingFinding] = []
+    suppression_id: Optional[UUID] = None
+    suppressed: bool = False
+    previous_hunts: int = 0
+    known_since: Optional[datetime] = None
     ecs_event: dict
     mitre_techniques: Optional[List[str]] = None
     mitre_mapping_source: str
@@ -231,6 +235,16 @@ class FindingContextResponse(BaseModel):
     time_to: datetime
     count: int
     events: List[ContextEvent]
+
+
+class FindingSuppress(BaseModel):
+    """Suppress a finding's pattern: it is known benign and should be hidden in future hunts."""
+    comment: Optional[str] = Field(None, max_length=1000)
+
+
+class SuppressionResult(BaseModel):
+    suppression_id: UUID
+    affected: int          # findings hidden (suppress) or restored (unsuppress)
 
 
 class FindingUpdate(BaseModel):

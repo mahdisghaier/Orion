@@ -19,6 +19,10 @@ export interface Finding {
   occurrence_count: number
   correlation_id: string | null
   corroborated_by: { id: string; siem_type: string }[]
+  suppression_id: string | null
+  suppressed: boolean
+  previous_hunts: number
+  known_since: string | null
   first_seen: string | null
   last_seen: string | null
   analyst_comment: string | null
@@ -42,6 +46,7 @@ export interface FindingFilters {
   siem_type?: string
   analyst_status?: string
   corroborated?: boolean
+  include_suppressed?: boolean
   source_ip?: string
   host_name?: string
   hunt_id?: string
@@ -54,6 +59,7 @@ export async function getFindings(filters: FindingFilters = {}): Promise<Paginat
   if (filters.siem_type) params.append('siem_type', filters.siem_type)
   if (filters.analyst_status) params.append('analyst_status', filters.analyst_status)
   if (filters.corroborated !== undefined) params.append('corroborated', String(filters.corroborated))
+  if (filters.include_suppressed) params.append('include_suppressed', 'true')
   if (filters.source_ip) params.append('source_ip', filters.source_ip)
   if (filters.host_name) params.append('host_name', filters.host_name)
   if (filters.hunt_id) params.append('hunt_id', filters.hunt_id)
@@ -114,5 +120,15 @@ export async function getFindingContext(
   window: number,
 ): Promise<FindingContext> {
   const { data } = await api.get(`/findings/${id}/context`, { params: { pivot, window } })
+  return data
+}
+
+export async function suppressFinding(id: string, comment: string): Promise<{ suppression_id: string; affected: number }> {
+  const { data } = await api.post(`/findings/${id}/suppress`, { comment: comment || null })
+  return data
+}
+
+export async function unsuppressFinding(id: string): Promise<{ suppression_id: string; affected: number }> {
+  const { data } = await api.delete(`/findings/${id}/suppress`)
   return data
 }

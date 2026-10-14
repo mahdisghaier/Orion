@@ -73,7 +73,7 @@ async def run_hunt(state: ChatState) -> ChatState:
             state["total_hits"] = hunt.total_hits
             from sqlalchemy import select
             from app.models import HuntResult
-            result = await db.execute(select(HuntResult).where(HuntResult.hunt_id == hunt.id).order_by(HuntResult.event_time.desc()).limit(50))
+            result = await db.execute(select(HuntResult).where(HuntResult.hunt_id == hunt.id, HuntResult.suppression_id.is_(None)).order_by(HuntResult.event_time.desc()).limit(50))
             findings = result.scalars().all()
             state["findings"] = [{"id": str(f.id), "process_name": f.process_name, "process_command_line": f.process_command_line, "host_name": f.host_name, "user_name": f.user_name, "event_time": f.event_time.isoformat() if f.event_time else None, "mitre_techniques": f.mitre_techniques, "siem_type": f.siem_type} for f in findings]
             state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": "Hunt complete. Status: " + str(hunt.status) + ". Found " + str(hunt.total_hits) + " matching event(s)."}]
