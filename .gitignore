@@ -27,3 +27,11 @@ Thumbs.db
 htmlcov/
 cookies.txt
 *.pyc
+ORION_HANDOVER_REPORT*
+
+# Local-only: lab evidence (hostnames, usernames, process lists), supervisor documents, local tool settings
+docs/lab_evidence/
+docs/*.docx
+docs/*.drawio
+*:Zone.Identifier
+.claude/
