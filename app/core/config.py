@@ -46,5 +46,14 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.6-flash"
 
+    # Optional alternative provider: any OpenAI-compatible chat endpoint (Groq, OpenRouter, Ollama, LM Studio...).
+    # LLM_PROVIDER=openai_compatible plus LLM_BASE_URL (e.g. http://localhost:11434/v1), LLM_MODEL and,
+    # if the service needs one, LLM_API_KEY. Default keeps Gemini.
+    LLM_PROVIDER: str = "gemini"
+    LLM_BASE_URL: Optional[str] = None
+    LLM_API_KEY: Optional[str] = None
+    LLM_MODEL: Optional[str] = None
+    LLM_TIMEOUT_SECONDS: float = 45.0
+
 # Singleton — import this everywhere: `from app.core.config import settings`
 settings = Settings()

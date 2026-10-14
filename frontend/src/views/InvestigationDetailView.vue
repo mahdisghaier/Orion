@@ -41,7 +41,8 @@
           <button @click="showAdd = !showAdd" class="px-4 py-2 border rounded text-sm hover:bg-gray-50">
             {{ showAdd ? 'Cancel' : 'Add my own rule' }}
           </button>
-          <span class="text-xs text-gray-500">Nothing runs until you approve a step.</span>
+          <span v-if="proposing" class="text-xs text-gray-500">Asking the AI planner (gives up after about a minute)...</span>
+          <span v-else class="text-xs text-gray-500">Nothing runs until you approve a step.</span>
         </div>
 
         <div v-if="showAdd" class="mt-4 space-y-3">

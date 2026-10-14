@@ -237,8 +237,11 @@ def default_llm_call(prompt: str, system_prompt: str, name: str) -> Tuple[str, d
     return llm_call_with_audit(get_llm(), prompt, system_prompt, name)
 
 
+LLM_GUARD_SECONDS = 60.0     # hard ceiling on the whole model call, whatever the client does
+
+
 async def propose_steps(context: dict, hypothesis: str, targets: List[dict], existing: set,
-                        llm_call: Optional[LLMCall] = None) -> Proposal:
+                        llm_call: Optional[LLMCall] = None, guard_seconds: float = LLM_GUARD_SECONDS) -> Proposal:
     """Deterministic pivots first, then validated LLM proposals, at most MAX_STEPS in total."""
     proposal = Proposal()
     proposal.steps.extend(deterministic_pivots(context, existing))
@@ -247,7 +250,11 @@ async def propose_steps(context: dict, hypothesis: str, targets: List[dict], exi
     call = llm_call or default_llm_call
     prompt = build_prompt(hypothesis, context)
     try:
-        text, audit = await asyncio.to_thread(call, prompt, SYSTEM_PROMPT, "investigation_planner")
+        text, audit = await asyncio.wait_for(
+            asyncio.to_thread(call, prompt, SYSTEM_PROMPT, "investigation_planner"), timeout=guard_seconds)
+    except asyncio.TimeoutError:
+        proposal.notes.append(f"AI planner did not answer within {guard_seconds:.0f}s; showing rule-based suggestions only")
+        return proposal
     except Exception as e:                      # the loop must work without the model
         proposal.notes.append(f"AI planner unavailable ({type(e).__name__}); showing rule-based suggestions only")
         return proposal
