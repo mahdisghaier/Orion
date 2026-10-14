@@ -390,9 +390,13 @@ def write_report(analysis: dict, meta: dict) -> None:
         lines.append(f"Mean change in P@1 from priority ordering: {statistics.mean(g[0] for g in gains):+.2f}; "
                      f"in P@3: {statistics.mean(g[1] for g in gains):+.2f}.")
 
+    planner_report = OUT_DIR / "PLANNER.md"
+    planner_done = planner_report.exists() and "NOT MEASURED" not in planner_report.read_text()
     not_measured = [
-        "- **AI planner quality** (how many proposed rules validate and produce hits): the model quota was exhausted "
-        "and no real model reply has been observed. The validation logic is unit-tested with stubbed replies only.",
+        ("- **AI planner quality**: measured separately in `PLANNER.md` (five hunches, one run, a small sample)."
+         if planner_done else
+         "- **AI planner quality** (how many proposed rules validate and produce hits): not measured, the model could not answer; "
+         "see `PLANNER.md`."),
         "- **Analyst time saved** (the 30-90 minute manual-hunt claim): needs a timed study with human analysts; none was run.",
         "- **Effect of analyst feedback over time** (suppression, history in scoring): no labelled analyst decisions exist yet, "
         "and the scoring weights have not been calibrated.",

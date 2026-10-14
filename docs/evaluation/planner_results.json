@@ -1,63 +1,124 @@
 {
  "meta": {
-  "date": "2026-10-14 21:22",
-  "model": "google/gemini-3.6-flash"
+  "date": "2026-10-14 21:40",
+  "model": "gemini-flash-latest"
  },
  "results": [
   {
    "hypothesis": "An attacker left a netcat listener on the workstation to keep access.",
-   "ai_answered": false,
-   "notes": [
-    "AI planner unavailable (ResourceExhausted); showing rule-based suggestions only"
+   "ai_answered": true,
+   "notes": [],
+   "models": [
+    "gemini-flash-latest"
    ],
-   "accepted_rules": 0,
-   "accepted_pivots": 0,
+   "accepted_rules": 1,
+   "accepted_pivots": 2,
    "rejected": 0,
    "rejection_reasons": [],
-   "rule_runs": []
+   "rule_runs": [
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 0
+    },
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 0
+    }
+   ]
   },
   {
    "hypothesis": "Someone is downloading tools onto the workstation with curl or wget.",
-   "ai_answered": false,
+   "ai_answered": true,
    "notes": [
-    "AI planner unavailable (ResourceExhausted); showing rule-based suggestions only"
+    "1 AI proposal(s) were rejected by validation"
    ],
-   "accepted_rules": 0,
-   "accepted_pivots": 0,
-   "rejected": 0,
-   "rejection_reasons": [],
-   "rule_runs": []
+   "models": [
+    "gemini-flash-latest"
+   ],
+   "accepted_rules": 1,
+   "accepted_pivots": 1,
+   "rejected": 1,
+   "rejection_reasons": [
+    "duplicate of a step already proposed or taken"
+   ],
+   "rule_runs": [
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 0
+    },
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 19
+    }
+   ]
   },
   {
    "hypothesis": "An attacker is hiding their tracks by clearing the shell history.",
-   "ai_answered": false,
+   "ai_answered": true,
    "notes": [
-    "AI planner unavailable (ResourceExhausted); showing rule-based suggestions only"
+    "1 AI proposal(s) were rejected by validation"
    ],
-   "accepted_rules": 0,
-   "accepted_pivots": 0,
-   "rejected": 0,
-   "rejection_reasons": [],
-   "rule_runs": []
+   "models": [
+    "gemini-flash-latest"
+   ],
+   "accepted_rules": 1,
+   "accepted_pivots": 1,
+   "rejected": 1,
+   "rejection_reasons": [
+    "duplicate of a step already proposed or taken"
+   ],
+   "rule_runs": [
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 0
+    },
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 62
+    }
+   ]
   },
   {
    "hypothesis": "A reverse shell was started through bash.",
-   "ai_answered": false,
+   "ai_answered": true,
    "notes": [
-    "AI planner unavailable (ResourceExhausted); showing rule-based suggestions only"
+    "1 AI proposal(s) were rejected by validation"
    ],
-   "accepted_rules": 0,
-   "accepted_pivots": 0,
-   "rejected": 0,
-   "rejection_reasons": [],
-   "rule_runs": []
+   "models": [
+    "gemini-flash-latest"
+   ],
+   "accepted_rules": 1,
+   "accepted_pivots": 1,
+   "rejected": 1,
+   "rejection_reasons": [
+    "duplicate of a step already proposed or taken"
+   ],
+   "rule_runs": [
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 0
+    },
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 5
+    }
+   ]
   },
   {
    "hypothesis": "A user is running unusual scripts from the /tmp directory.",
    "ai_answered": false,
    "notes": [
-    "AI planner unavailable (ResourceExhausted); showing rule-based suggestions only"
+    "AI planner did not answer within 90s; showing rule-based suggestions only"
    ],
+   "models": [],
    "accepted_rules": 0,
    "accepted_pivots": 0,
    "rejected": 0,

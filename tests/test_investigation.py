@@ -103,6 +103,19 @@ class Validation(unittest.TestCase):
         self.assertIn("cites", bad[0]["reason"])
         self.assertEqual(len(validate_llm_steps([self.rule(cites=["f-1"])], context(), targets(), set())[0]), 1)
 
+    def test_the_prompt_defines_the_field_that_carries_the_rule(self):
+        # a real model once put the YAML under "rule" because the prompt never named the field
+        from app.services.investigation.proposer import SYSTEM_PROMPT
+        self.assertIn('"sigma_rule"', SYSTEM_PROMPT)
+        self.assertIn('"finding_id"', SYSTEM_PROMPT)
+
+    def test_common_aliases_for_the_rule_field_are_accepted(self):
+        for key in ("rule", "sigma", "yaml"):
+            step = {"kind": "rule", "title": "t", "rationale": "r", "cites": ["Image"], key: NC_RULE}
+            ok, bad = validate_llm_steps([step], context(), targets(), set())
+            self.assertEqual((len(ok), bad), (1, []), key)
+            self.assertEqual(ok[0]["payload"]["sigma_rule"], NC_RULE.strip())
+
     def test_garbage_yaml_and_non_rules_are_rejected(self):
         for text in ("::: not yaml :::\n\t- [", "title: only a title", "just text"):
             ok, bad = validate_llm_steps([self.rule(text)], context(), targets(), set())

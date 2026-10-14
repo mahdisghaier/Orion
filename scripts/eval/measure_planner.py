@@ -80,6 +80,7 @@ async def measure_one(hypothesis: str, live: list, call) -> dict:
                 ran.append({"siem": siem["type"], "ok": False, "error": type(e).__name__})
     rejected = proposal.rejected
     return {"hypothesis": hypothesis, "ai_answered": ai_answered, "notes": proposal.notes,
+            "models": sorted({a.get("model", "?") for a in proposal.audits}),
             "accepted_rules": len(ai_rules), "accepted_pivots": len(ai_pivots), "rejected": len(rejected),
             "rejection_reasons": [r["reason"][:90] for r in rejected], "rule_runs": ran}
 
@@ -88,7 +89,7 @@ async def measure_one(hypothesis: str, live: list, call) -> dict:
 def render(results: list, meta: dict) -> str:
     answered = [r for r in results if r["ai_answered"]]
     lines = ["# ORION planner measurement", "",
-             f"Run on {meta['date']}. Provider and model: {meta['model']}.", ""]
+             f"Run on {meta['date']}. Model(s) that answered: {meta['model']}.", ""]
     if not answered:
         lines += ["## Result: NOT MEASURED", "",
                   "The AI model did not answer any of the test hunches, so no planner quality number exists. "
@@ -115,7 +116,13 @@ def render(results: list, meta: dict) -> str:
     if reasons:
         lines += ["", "## Why proposals were rejected", ""] + [f"- {x}" for x in reasons]
     lines += ["", "A returned event does not mean the rule is a good detection: it only means the rule is valid and runs. "
-              "Whether it is useful needs the ground-truth markers of the main evaluation or an analyst's judgement.", ""]
+              "Whether it is useful needs the ground-truth markers of the main evaluation or an analyst's judgement.", "",
+              "## Limits of this measurement", "",
+              "- Five hunches, one run: a small sample, so the percentages are indicative only.",
+              "- Model names such as `gemini-flash-latest` are moving aliases: the same name can mean a different model later, "
+              "so a re-run may not reproduce these numbers. Pin a dated model name for the final thesis run.",
+              "- Rejected proposals here were duplicates of the built-in suggestions; invalid-rule rejections are covered by unit tests only.",
+              "- Some free-tier models are limited to a few requests per day, so a hunch can fall through every model in the chain.", ""]
     return "\n".join(lines)
 
 
@@ -130,9 +137,8 @@ async def main_async(stub: bool) -> None:
         log(f"asking the planner: {hypothesis}")
         results.append(await measure_one(hypothesis, live, call))
     if call is None:
-        from app.services.agent.llm import llm_identity
-        provider, model = llm_identity()
-        model_name = f"{provider}/{model}"
+        used = sorted({m for r in results for m in r["models"]})        # the models that REALLY answered
+        model_name = ", ".join(used) if used else "none answered"
     else:
         model_name = "stub (dry run)"
     meta = {"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "model": model_name}
@@ -149,6 +155,12 @@ async def main_async(stub: bool) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--stub", action="store_true", help="dry run with canned replies; writes nothing")
+    parser.add_argument("--render-only", action="store_true", help="rebuild PLANNER.md from planner_results.json (no model calls)")
     args = parser.parse_args()
     logging.disable(logging.CRITICAL)
-    asyncio.run(main_async(args.stub))
+    if args.render_only:
+        saved = json.loads((OUT_DIR / "planner_results.json").read_text())
+        (OUT_DIR / "PLANNER.md").write_text(render(saved["results"], saved["meta"]))
+        log("PLANNER.md rebuilt from planner_results.json")
+    else:
+        asyncio.run(main_async(args.stub))

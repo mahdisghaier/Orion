@@ -56,7 +56,7 @@ Mean change in P@1 from priority ordering: +0.00; in P@3: +0.00.
 
 ## 4. Not measured
 
-- **AI planner quality** (how many proposed rules validate and produce hits): the model quota was exhausted and no real model reply has been observed. The validation logic is unit-tested with stubbed replies only.
+- **AI planner quality**: measured separately in `PLANNER.md` (five hunches, one run, a small sample).
 - **Analyst time saved** (the 30-90 minute manual-hunt claim): needs a timed study with human analysts; none was run.
 - **Effect of analyst feedback over time** (suppression, history in scoring): no labelled analyst decisions exist yet, and the scoring weights have not been calibrated.
 - **File-integrity technique (T1565.001)**: not run in this report. It needs `sudo bash scripts/lab/enable_fim_demo.sh` and `--fim`, and is where Wazuh is expected to see what process telemetry cannot.

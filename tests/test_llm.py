@@ -6,6 +6,8 @@ import json
 import time
 import unittest
 
+from types import SimpleNamespace as NS
+
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -92,6 +94,87 @@ class Selection(unittest.TestCase):
             self.assertEqual(llm_module.llm_identity()[0], "google")
         finally:
             s.LLM_PROVIDER, s.LLM_BASE_URL, s.LLM_MODEL = old
+
+
+# [explain] The Gemini model chain: when one model is out of its daily allowance, the next one answers.
+class GeminiFallback(unittest.TestCase):
+    def setUp(self):
+        self.calls = []
+        self.behaviour = {}                      # model -> exception name to raise, or None to answer
+        calls, behaviour = self.calls, self.behaviour
+
+        class FakeGemini:
+            def __init__(self, model, **kwargs):
+                self.model = model
+
+            def invoke(self, messages):
+                calls.append(self.model)
+                problem = behaviour.get(self.model)
+                if problem:
+                    raise type(problem, (Exception,), {})("boom")
+                return NS(content=f"answered by {self.model}")
+
+        self.real = llm_module.ChatGoogleGenerativeAI
+        llm_module.ChatGoogleGenerativeAI = FakeGemini
+        llm_module._exhausted_until.clear()
+
+    def tearDown(self):
+        llm_module.ChatGoogleGenerativeAI = self.real
+        llm_module._exhausted_until.clear()
+
+    def chain(self, *models):
+        return llm_module.GeminiFallbackLLM(list(models), "k", 0.3, 5)
+
+    def test_the_next_model_answers_when_the_first_is_out(self):
+        self.behaviour["a"] = "ResourceExhausted"
+        llm = self.chain("a", "b", "c")
+        self.assertEqual(llm.invoke([HumanMessage(content="x")]).content, "answered by b")
+        self.assertEqual(llm.last_model, "b")
+        self.assertEqual(self.calls, ["a", "b"])
+
+    def test_an_exhausted_model_is_not_retried_for_a_while(self):
+        self.behaviour["a"] = "ResourceExhausted"
+        llm = self.chain("a", "b")
+        llm.invoke([HumanMessage(content="x")])
+        llm.invoke([HumanMessage(content="x")])
+        self.assertEqual(self.calls, ["a", "b", "b"])            # the second round skips "a" entirely
+
+    def test_a_missing_model_is_skipped_too(self):
+        self.behaviour["a"] = "NotFound"
+        self.assertEqual(self.chain("a", "b").invoke([HumanMessage(content="x")]).content, "answered by b")
+
+    def test_a_real_error_is_not_hidden_by_trying_other_models(self):
+        self.behaviour["a"] = "InvalidArgument"
+        with self.assertRaises(Exception) as ctx:
+            self.chain("a", "b").invoke([HumanMessage(content="x")])
+        self.assertEqual(type(ctx.exception).__name__, "InvalidArgument")
+        self.assertEqual(self.calls, ["a"])
+
+    def test_when_every_model_is_out_the_error_is_raised(self):
+        self.behaviour.update({"a": "ResourceExhausted", "b": "ResourceExhausted"})
+        with self.assertRaises(Exception) as ctx:
+            self.chain("a", "b").invoke([HumanMessage(content="x")])
+        self.assertEqual(type(ctx.exception).__name__, "ResourceExhausted")
+
+    def test_get_llm_builds_the_chain_without_duplicates(self):
+        s = llm_module.settings
+        old = (s.LLM_PROVIDER, s.GEMINI_MODEL, s.GEMINI_FALLBACK_MODELS)
+        try:
+            s.LLM_PROVIDER, s.GEMINI_MODEL, s.GEMINI_FALLBACK_MODELS = "gemini", "m1", "m2, m1 ,m3"
+            self.assertEqual(llm_module.get_llm().models, ["m1", "m2", "m3"])
+        finally:
+            s.LLM_PROVIDER, s.GEMINI_MODEL, s.GEMINI_FALLBACK_MODELS = old
+
+    def test_the_audit_names_the_model_that_really_answered(self):
+        self.behaviour["a"] = "ResourceExhausted"
+        s = llm_module.settings
+        old = s.LLM_PROVIDER
+        s.LLM_PROVIDER = "gemini"
+        try:
+            _, audit = llm_module.llm_call_with_audit(self.chain("a", "b"), "prompt", "", "test")
+        finally:
+            s.LLM_PROVIDER = old
+        self.assertEqual(audit["model"], "b")
 
 
 # [explain] A slow AI is cut off and the rule-based suggestions are returned.

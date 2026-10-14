@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     LLM_MODEL: Optional[str] = None
     LLM_TIMEOUT_SECONDS: float = 45.0
 
+    # Gemini's free tier counts requests PER MODEL per day (20 for gemini-3.6-flash), so when the main model is out
+    # the client moves on to these, in order. Comma separated. Empty = no fallback.
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.7-flash,gemini-flash-latest,gemini-3.1-flash-lite"
+
 # Singleton — import this everywhere: `from app.core.config import settings`
 # [explain] The one settings object the whole app imports. It reads its values from environment variables / the .env file.
 settings = Settings()

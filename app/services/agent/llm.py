@@ -1,5 +1,6 @@
 """LLM client + audit logging helper for the agent."""
 import json
+import time
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Optional, Dict, Any, Tuple
@@ -63,6 +64,43 @@ class OpenAICompatLLM:
 
 
 # [explain] Which AI provider and model are really in use. It is written in the audit trail next to every call.
+# [explain] Errors that mean "this model cannot answer right now, but another one might".
+_TRY_NEXT_MODEL = {"ResourceExhausted", "NotFound", "ServiceUnavailable"}
+_COOLDOWN_SECONDS = 30 * 60
+_exhausted_until: Dict[str, float] = {}      # model -> time before which we do not even try it
+
+
+# [explain] Gemini's free tier gives each MODEL its own small daily allowance. This client tries the main model first;
+# [explain] if it is out (or missing) it quietly moves to the next one, and remembers for 30 minutes not to retry the empty ones.
+# [explain] `last_model` tells the audit trail which model really answered.
+class GeminiFallbackLLM:
+    def __init__(self, models: list, api_key: Optional[str], temperature: float, timeout: float):
+        self.models = models
+        self.api_key = api_key
+        self.temperature = temperature
+        self.timeout = timeout
+        self.last_model: Optional[str] = None
+
+    def invoke(self, messages):
+        last_error: Optional[Exception] = None
+        now = time.monotonic()
+        candidates = [m for m in self.models if _exhausted_until.get(m, 0) <= now] or list(self.models)
+        for model in candidates:
+            client = ChatGoogleGenerativeAI(model=model, google_api_key=self.api_key, temperature=self.temperature,
+                                            max_retries=0, timeout=self.timeout)
+            try:
+                reply = client.invoke(messages)
+            except Exception as e:
+                if type(e).__name__ not in _TRY_NEXT_MODEL:
+                    raise
+                _exhausted_until[model] = time.monotonic() + _COOLDOWN_SECONDS
+                last_error = e
+                continue
+            self.last_model = model
+            return reply
+        raise last_error if last_error else LLMUnavailable("no Gemini model configured")
+
+
 def llm_identity() -> Tuple[str, str]:
     """(provider, model) actually in use, for the audit trail."""
     if settings.LLM_PROVIDER == "openai_compatible":
@@ -79,12 +117,12 @@ def get_llm():
             raise LLMUnavailable("LLM_PROVIDER=openai_compatible needs LLM_BASE_URL and LLM_MODEL")
         return OpenAICompatLLM(settings.LLM_BASE_URL, settings.LLM_MODEL, settings.LLM_API_KEY,
                                temperature=0.3, timeout=settings.LLM_TIMEOUT_SECONDS)
-    return ChatGoogleGenerativeAI(
-        model=settings.GEMINI_MODEL,
-        google_api_key=settings.GEMINI_API_KEY,
-        temperature=0.3,  # low for predictable Sigma rule generation
-        max_retries=1,    # the default (6, with backoff) turned a quota error into minutes of "Thinking..."
-        timeout=settings.LLM_TIMEOUT_SECONDS,
+    models = [settings.GEMINI_MODEL] + [m.strip() for m in settings.GEMINI_FALLBACK_MODELS.split(",") if m.strip()]
+    return GeminiFallbackLLM(
+        models=list(dict.fromkeys(models)),       # no duplicates, order kept
+        api_key=settings.GEMINI_API_KEY,
+        temperature=0.3,                          # low for predictable Sigma rule generation
+        timeout=settings.LLM_TIMEOUT_SECONDS,     # no retries inside a model: the default (6, with backoff) meant minutes of "Thinking..."
     )
 
 
@@ -112,6 +150,7 @@ def llm_call_with_audit(
     response_text = response.content
     
     provider, model = llm_identity()
+    model = getattr(llm, "last_model", None) or model       # the model that really answered (fallback chain)
     audit_entry = {
         "context": context_name,
         "prompt": prompt,

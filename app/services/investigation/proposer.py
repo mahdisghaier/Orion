@@ -40,7 +40,14 @@ SYSTEM_PROMPT = (
     '- "pivot": look at events around one finding. Fields: finding_id (must be one listed), pivot (host, process or '
     "user) and window_minutes (5 to 60).\n"
     'Every step needs "kind", "title", "rationale" (1 to 3 sentences citing concrete facts from the data: field names, '
-    'counts, scores) and "cites" (a list of finding ids and/or field names you rely on).\n'
+    'counts, scores) and "cites" (a list of finding ids and/or field names you rely on). A rule step carries the '
+    'Sigma YAML as ONE STRING in the field "sigma_rule"; a pivot step uses "finding_id", "pivot" and "window_minutes". '
+    'Exact shape:\n'
+    '{"steps":[{"kind":"rule","title":"...","rationale":"...","cites":["Image"],"sigma_rule":"title: ...\\n'
+    'logsource:\\n  product: linux\\n  category: process_creation\\ndetection:\\n  selection:\\n    Image|endswith: /nc\\n'
+    '  condition: selection\\ntags:\\n  - attack.discovery"},'
+    '{"kind":"pivot","title":"...","rationale":"...","cites":["<finding id>"],"finding_id":"<finding id>",'
+    '"pivot":"process","window_minutes":15}]}\n'
     "past_investigations lists similar investigations that analysts already concluded in this environment, with their "
     "verdict and the steps that ran: reuse an approach that worked, and do not repeat one that ended benign or inconclusive "
     "unless the data changed.\n"
@@ -212,7 +219,8 @@ def validate_llm_steps(raw_steps: list, context: dict, targets: List[dict],
             payload = {"finding_id": fid, "pivot": pivot, "window_minutes": window}
             assessment = {"runnable": True, "siem": finding["siem"]}
         else:
-            sigma_yaml = raw.get("sigma_rule")
+            # the prompt names the field "sigma_rule"; models sometimes call it something else, which is no reason to discard the rule
+            sigma_yaml = next((raw[k] for k in ("sigma_rule", "rule", "sigma", "yaml") if isinstance(raw.get(k), str) and raw[k].strip()), None)
             if not isinstance(sigma_yaml, str) or not sigma_yaml.strip():
                 rejected.append({"title": title, "reason": "no sigma_rule"})
                 continue
