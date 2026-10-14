@@ -106,7 +106,7 @@ async def get_hunt_results(
     result = await db.execute(
         select(HuntResult)
         .where(HuntResult.hunt_id == hunt_id)
-        .order_by(HuntResult.event_time.desc())
+        .order_by(HuntResult.priority_score.desc().nulls_last(), HuntResult.event_time.desc())
         .offset(offset)
         .limit(limit)
     )

@@ -253,6 +253,9 @@ class HuntResult(Base):
     # Findings of the same hunt that different SIEMs reported for the same behaviour share this id
     # (see services/correlation.py).
     correlation_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Deterministic 0-100 priority and the reasons behind it (services/prioritization.py)
+    priority_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    priority_breakdown: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     # Set while an active suppression covers this finding's fingerprint (known benign, hidden by default)
     suppression_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("finding_suppressions.id", ondelete="SET NULL"), nullable=True
@@ -299,6 +302,7 @@ class HuntResult(Base):
         Index("idx_results_fingerprint", "fingerprint"),
         Index("idx_results_correlation", "correlation_id"),
         Index("idx_results_suppression", "suppression_id"),
+        Index("idx_results_priority", "priority_score"),
         Index("idx_results_time_desc", "event_time", postgresql_ops={"event_time": "DESC"}),
         Index("idx_results_siem", "siem_type"),
         Index("idx_results_status", "analyst_status"),

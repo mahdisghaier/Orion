@@ -197,6 +197,8 @@ class HuntResultResponse(BaseModel):
     corroborated_by: List[CorroboratingFinding] = []
     suppression_id: Optional[UUID] = None
     suppressed: bool = False
+    priority_score: Optional[int] = None
+    priority_breakdown: Optional[List[dict]] = None
     previous_hunts: int = 0
     known_since: Optional[datetime] = None
     ecs_event: dict

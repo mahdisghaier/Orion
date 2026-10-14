@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
 from app.models import FindingSuppression, HuntResult, Incident, SIEMConnection, User
 from app.services.corroboration import enrich_findings
+from app.services.prioritization import rescore_fingerprint
 from app.services.connectors.factory import ConnectorError, get_connector
 from app.services.ecs import extract_ecs_fields, get_nested
 from app.schemas import (
@@ -34,6 +35,7 @@ async def list_findings(
     hunt_id: Optional[UUID] = Query(None),
     corroborated: Optional[bool] = Query(None, description="true: only findings that 2+ SIEMs reported"),
     include_suppressed: bool = Query(False, description="also list findings hidden by a suppression"),
+    sort: str = Query("priority", pattern="^(priority|time)$", description="priority (default) or newest first"),
     collapse_repeats: bool = Query(True, description="one row per behaviour (latest); false: every hunt's copy"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -75,9 +77,11 @@ async def list_findings(
 
     total = (await db.execute(count_query)).scalar()
     offset = (page - 1) * page_size
-    result = await db.execute(
-        query.order_by(HuntResult.event_time.desc()).offset(offset).limit(page_size)
+    order = (
+        [HuntResult.priority_score.desc().nulls_last(), HuntResult.event_time.desc()]
+        if sort == "priority" else [HuntResult.event_time.desc()]
     )
+    result = await db.execute(query.order_by(*order).offset(offset).limit(page_size))
     findings = await enrich_findings(db, result.scalars().all())
 
     return {
@@ -226,6 +230,7 @@ async def suppress_finding(
         )
         .values(suppression_id=suppression.id)
     )
+    await rescore_fingerprint(db, finding.fingerprint)
     await log_action(
         db, user_id=current_user.id, action="finding.suppress",
         target_type="finding", target_id=finding_id,
@@ -265,6 +270,7 @@ async def unsuppress_finding(
     result = await db.execute(
         update(HuntResult).where(HuntResult.suppression_id == suppression.id).values(suppression_id=None)
     )
+    await rescore_fingerprint(db, finding.fingerprint)
     await log_action(
         db, user_id=current_user.id, action="finding.unsuppress",
         target_type="finding", target_id=finding_id,
@@ -302,6 +308,7 @@ async def update_finding(
         finding.reviewed_by = current_user.id
         finding.reviewed_at = datetime.utcnow()
 
+        await rescore_fingerprint(db, finding.fingerprint)      # a decision changes every copy's priority
         await log_action(
             db, user_id=current_user.id, action="finding.update",
             target_type="finding", target_id=finding_id,
@@ -355,6 +362,7 @@ async def escalate_finding(
     finding.reviewed_by = current_user.id
     finding.reviewed_at = datetime.utcnow()
 
+    await rescore_fingerprint(db, finding.fingerprint)
     await log_action(
         db, user_id=current_user.id, action="finding.escalate",
         target_type="finding", target_id=finding_id,

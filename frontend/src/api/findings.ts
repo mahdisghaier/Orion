@@ -20,6 +20,8 @@ export interface Finding {
   correlation_id: string | null
   corroborated_by: { id: string; siem_type: string }[]
   suppression_id: string | null
+  priority_score: number | null
+  priority_breakdown: { factor: string; points: number; detail: string }[] | null
   suppressed: boolean
   previous_hunts: number
   known_since: string | null
@@ -48,6 +50,7 @@ export interface FindingFilters {
   corroborated?: boolean
   include_suppressed?: boolean
   collapse_repeats?: boolean
+  sort?: 'priority' | 'time'
   source_ip?: string
   host_name?: string
   hunt_id?: string
@@ -62,6 +65,7 @@ export async function getFindings(filters: FindingFilters = {}): Promise<Paginat
   if (filters.corroborated !== undefined) params.append('corroborated', String(filters.corroborated))
   if (filters.include_suppressed) params.append('include_suppressed', 'true')
   if (filters.collapse_repeats === false) params.append('collapse_repeats', 'false')
+  if (filters.sort) params.append('sort', filters.sort)
   if (filters.source_ip) params.append('source_ip', filters.source_ip)
   if (filters.host_name) params.append('host_name', filters.host_name)
   if (filters.hunt_id) params.append('hunt_id', filters.hunt_id)

@@ -1,10 +1,11 @@
 """Attach derived information (corroboration, history) to findings before they are serialized."""
 from typing import Iterable, List
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import HuntResult
+from app.services.prioritization import fingerprint_stats
 
 
 async def attach_corroboration(db: AsyncSession, findings: Iterable[HuntResult]) -> List[HuntResult]:
@@ -34,23 +35,11 @@ async def attach_history(db: AsyncSession, findings: Iterable[HuntResult]) -> Li
     the analyst should see that, and since when. One query for the whole batch.
     """
     findings = list(findings)
-    fingerprints = {f.fingerprint for f in findings if f.fingerprint}
-    stats = {}
-    if fingerprints:
-        rows = (await db.execute(
-            select(
-                HuntResult.fingerprint,
-                func.count(func.distinct(HuntResult.hunt_id)),
-                func.min(func.coalesce(HuntResult.first_seen, HuntResult.event_time)),
-            )
-            .where(HuntResult.fingerprint.in_(fingerprints))
-            .group_by(HuntResult.fingerprint)
-        )).all()
-        stats = {fp: (hunts, since) for fp, hunts, since in rows}
+    stats = await fingerprint_stats(db, (f.fingerprint for f in findings))
     for f in findings:
-        hunts, since = stats.get(f.fingerprint, (1, None))
-        f.previous_hunts = max(hunts - 1, 0)          # the finding's own hunt is one of the counted
-        f.known_since = since if hunts > 1 else None
+        st = stats.get(f.fingerprint, {"hunts": 1, "since": None})
+        f.previous_hunts = max(st["hunts"] - 1, 0)          # the finding's own hunt is one of the counted
+        f.known_since = st["since"] if st["hunts"] > 1 else None
     return findings
 
 

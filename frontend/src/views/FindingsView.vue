@@ -7,6 +7,10 @@
         <p class="text-sm text-gray-500 mt-1">{{ total }} total findings</p>
       </div>
       <div class="flex gap-2">
+        <select v-model="filters.sort" @change="loadFindings" class="px-3 py-2 border rounded text-sm" title="Sort order">
+          <option value="priority">Sort: priority</option>
+          <option value="time">Sort: newest</option>
+        </select>
         <select v-model="filters.siem_type" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
           <option value="">All SIEMs</option>
           <option value="elastic">Elastic</option>
@@ -57,6 +61,7 @@
       <table class="w-full text-sm">
         <thead class="bg-[#1a4a7a] text-white">
           <tr>
+            <th class="text-left px-4 py-3 font-medium">Priority</th>
             <th class="text-left px-4 py-3 font-medium">Time</th>
             <th class="text-left px-4 py-3 font-medium">SIEM</th>
             <th class="text-left px-4 py-3 font-medium">Process</th>
@@ -73,6 +78,15 @@
             :key="finding.id"
             class="border-t border-gray-200 hover:bg-gray-50"
           >
+            <td class="px-4 py-3">
+              <span
+                v-if="finding.priority_score !== null"
+                :class="priorityBadge(finding.priority_score)"
+                class="px-2 py-1 rounded text-sm font-bold"
+                :title="(finding.priority_breakdown || []).map(b => (b.points >= 0 ? '+' : '') + b.points + ' ' + b.factor + ': ' + b.detail).join('\n')"
+              >{{ finding.priority_score }}</span>
+              <span v-else class="text-gray-400">—</span>
+            </td>
             <td class="px-4 py-3 text-gray-600">
               {{ formatTime(finding.last_seen || finding.event_time) }}
               <div v-if="finding.occurrence_count > 1" class="text-xs text-gray-500 mt-1">
@@ -170,6 +184,7 @@ const filters = reactive({
   corroborated: '',
   include_suppressed: false,
   show_repeats: false,
+  sort: 'priority' as 'priority' | 'time',
 })
 
 async function loadFindings() {
@@ -184,6 +199,7 @@ async function loadFindings() {
       corroborated: filters.corroborated === '' ? undefined : filters.corroborated === 'true',
       include_suppressed: filters.include_suppressed,
       collapse_repeats: !filters.show_repeats,
+      sort: filters.sort,
     })
     findings.value = data.items
     total.value = data.total
@@ -211,6 +227,12 @@ function prevPage() {
     filters.page--
     loadFindings()
   }
+}
+
+function priorityBadge(score: number): string {
+  if (score >= 70) return 'bg-red-100 text-red-800'
+  if (score >= 40) return 'bg-amber-100 text-amber-800'
+  return 'bg-gray-100 text-gray-700'
 }
 
 function siemBadge(siem: string): string {

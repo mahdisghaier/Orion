@@ -13,6 +13,7 @@ from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
 from app.services.correlation import Candidate, correlate
 from app.services.grouping import group_events
+from app.services.prioritization import rescore_findings
 from app.services.sigma_engine import convert_sigma_rule, unmapped_fields
 
 
@@ -246,6 +247,10 @@ class HuntRunner:
             suppressed = {fp: sid for sid, fp in rows}
             for finding in findings:
                 finding.suppression_id = suppressed.get(finding.fingerprint)
+
+        # Priority needs the findings, correlation and suppression above; hunt.rule_id is already set
+        await self.db.flush()
+        await rescore_findings(self.db, findings)
 
         # Every SIEM that was queried failed: this is a failed hunt, not a clean one.
         hunt.status = "failed" if failed_queries == len(tasks) else "completed"

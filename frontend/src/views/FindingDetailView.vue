@@ -136,6 +136,31 @@
         </div>
       </div>
 
+      <!-- Priority: deterministic score with its reasons -->
+      <div v-if="finding.priority_score !== null" class="bg-white border rounded-lg p-6">
+        <div class="flex items-baseline gap-3 mb-1">
+          <h2 class="text-lg font-bold">Priority</h2>
+          <span class="text-3xl font-bold" :class="finding.priority_score >= 70 ? 'text-red-700' : finding.priority_score >= 40 ? 'text-amber-700' : 'text-gray-700'">
+            {{ finding.priority_score }}
+          </span>
+          <span class="text-sm text-gray-500">/ 100</span>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">
+          Computed by ORION from the evidence below, not by the AI. It is recomputed when an analyst decides on this pattern.
+        </p>
+        <table class="w-full text-sm">
+          <tbody>
+            <tr v-for="b in finding.priority_breakdown || []" :key="b.factor" class="border-t">
+              <td class="py-2 pr-3 font-mono text-right w-16" :class="b.points > 0 ? 'text-green-700' : b.points < 0 ? 'text-red-700' : 'text-gray-400'">
+                {{ b.points > 0 ? '+' : '' }}{{ b.points }}
+              </td>
+              <td class="py-2 pr-3 w-36 text-gray-700">{{ b.factor }}</td>
+              <td class="py-2 text-gray-600">{{ b.detail }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- History + suppression state -->
       <div v-if="finding.suppressed" class="bg-gray-100 border border-gray-300 rounded-lg p-4 flex justify-between items-center gap-4">
         <div>
