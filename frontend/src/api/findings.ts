@@ -47,6 +47,7 @@ export interface FindingFilters {
   analyst_status?: string
   corroborated?: boolean
   include_suppressed?: boolean
+  collapse_repeats?: boolean
   source_ip?: string
   host_name?: string
   hunt_id?: string
@@ -60,6 +61,7 @@ export async function getFindings(filters: FindingFilters = {}): Promise<Paginat
   if (filters.analyst_status) params.append('analyst_status', filters.analyst_status)
   if (filters.corroborated !== undefined) params.append('corroborated', String(filters.corroborated))
   if (filters.include_suppressed) params.append('include_suppressed', 'true')
+  if (filters.collapse_repeats === false) params.append('collapse_repeats', 'false')
   if (filters.source_ip) params.append('source_ip', filters.source_ip)
   if (filters.host_name) params.append('host_name', filters.host_name)
   if (filters.hunt_id) params.append('hunt_id', filters.hunt_id)

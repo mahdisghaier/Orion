@@ -22,6 +22,10 @@
           <input type="checkbox" v-model="filters.include_suppressed" @change="loadFindings" />
           Show suppressed
         </label>
+        <label class="flex items-center gap-2 px-3 py-2 border rounded text-sm bg-white cursor-pointer" title="One row per behaviour is shown by default; tick to list the copy from every hunt">
+          <input type="checkbox" v-model="filters.show_repeats" @change="loadFindings" />
+          Show repeats
+        </label>
         <select v-model="filters.analyst_status" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
           <option value="">All Status</option>
           <option value="new">New</option>
@@ -165,6 +169,7 @@ const filters = reactive({
   analyst_status: '',
   corroborated: '',
   include_suppressed: false,
+  show_repeats: false,
 })
 
 async function loadFindings() {
@@ -178,6 +183,7 @@ async function loadFindings() {
       analyst_status: filters.analyst_status || undefined,
       corroborated: filters.corroborated === '' ? undefined : filters.corroborated === 'true',
       include_suppressed: filters.include_suppressed,
+      collapse_repeats: !filters.show_repeats,
     })
     findings.value = data.items
     total.value = data.total

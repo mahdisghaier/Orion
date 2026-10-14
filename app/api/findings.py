@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select, func, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import log_action
@@ -34,35 +34,44 @@ async def list_findings(
     hunt_id: Optional[UUID] = Query(None),
     corroborated: Optional[bool] = Query(None, description="true: only findings that 2+ SIEMs reported"),
     include_suppressed: bool = Query(False, description="also list findings hidden by a suppression"),
+    collapse_repeats: bool = Query(True, description="one row per behaviour (latest); false: every hunt's copy"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all findings with pagination + filtering."""
-    query = select(HuntResult)
-    count_query = select(func.count(HuntResult.id))
+    """List findings with pagination + filtering.
 
+    By default each behaviour appears once: its most recent finding (the same fingerprint found
+    again by later hunts is "known", see previous_hunts). Pass collapse_repeats=false for every
+    copy. Findings of one specific hunt (hunt_id) are never collapsed. Legacy findings without
+    a fingerprint always appear individually.
+    """
+    conds = []
     if siem_type:
-        query = query.where(HuntResult.siem_type == siem_type)
-        count_query = count_query.where(HuntResult.siem_type == siem_type)
+        conds.append(HuntResult.siem_type == siem_type)
     if analyst_status:
-        query = query.where(HuntResult.analyst_status == analyst_status)
-        count_query = count_query.where(HuntResult.analyst_status == analyst_status)
+        conds.append(HuntResult.analyst_status == analyst_status)
     if source_ip:
-        query = query.where(HuntResult.source_ip == source_ip)
-        count_query = count_query.where(HuntResult.source_ip == source_ip)
+        conds.append(HuntResult.source_ip == source_ip)
     if host_name:
-        query = query.where(HuntResult.host_name == host_name)
-        count_query = count_query.where(HuntResult.host_name == host_name)
+        conds.append(HuntResult.host_name == host_name)
     if hunt_id:
-        query = query.where(HuntResult.hunt_id == hunt_id)
-        count_query = count_query.where(HuntResult.hunt_id == hunt_id)
+        conds.append(HuntResult.hunt_id == hunt_id)
     if not include_suppressed:
-        query = query.where(HuntResult.suppression_id.is_(None))
-        count_query = count_query.where(HuntResult.suppression_id.is_(None))
+        conds.append(HuntResult.suppression_id.is_(None))
     if corroborated is not None:
-        cond = HuntResult.correlation_id.is_not(None) if corroborated else HuntResult.correlation_id.is_(None)
-        query = query.where(cond)
-        count_query = count_query.where(cond)
+        conds.append(HuntResult.correlation_id.is_not(None) if corroborated else HuntResult.correlation_id.is_(None))
+
+    if collapse_repeats and not hunt_id:
+        latest_per_behaviour = (
+            select(HuntResult.id)
+            .where(HuntResult.fingerprint.is_not(None), *conds)
+            .distinct(HuntResult.fingerprint)
+            .order_by(HuntResult.fingerprint, HuntResult.event_time.desc(), HuntResult.created_at.desc())
+        )
+        conds.append(or_(HuntResult.fingerprint.is_(None), HuntResult.id.in_(latest_per_behaviour)))
+
+    query = select(HuntResult).where(*conds)
+    count_query = select(func.count(HuntResult.id)).where(*conds)
 
     total = (await db.execute(count_query)).scalar()
     offset = (page - 1) * page_size
