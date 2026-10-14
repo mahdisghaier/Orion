@@ -41,7 +41,6 @@ def context():
             "findings": [FINDING], "steps_so_far": []}
 
 
-# [explain] Reading the AI's answer, including answers wrapped in markdown.
 class Parsing(unittest.TestCase):
     def test_plain_and_fenced_json(self):
         self.assertEqual(parse_llm_json('{"steps": []}'), {"steps": []})
@@ -58,7 +57,6 @@ class Parsing(unittest.TestCase):
         self.assertIsNone(clip(None))
 
 
-# [explain] The suggestions that need no AI.
 class Deterministic(unittest.TestCase):
     def test_pivots_on_the_top_finding_process_then_host(self):
         steps = deterministic_pivots(context(), set())
@@ -74,7 +72,6 @@ class Deterministic(unittest.TestCase):
         self.assertEqual(deterministic_pivots({"findings": []}, set()), [])
 
 
-# [explain] The bouncer for AI proposals: invented evidence, blind fields, duplicates and over-long lists are refused.
 class Validation(unittest.TestCase):
     def rule(self, yaml_text=NC_RULE, cites=("Image",), **extra):
         return {"kind": "rule", "title": "Hunt nc", "rationale": "Image is populated on 99% of events.",
@@ -160,7 +157,6 @@ class Validation(unittest.TestCase):
         self.assertTrue(ok[0]["assessment"]["targets"][0]["archive"])
 
 
-# [explain] The whole planning round, including AI down, garbled answers, and hostile log text.
 class Orchestration(unittest.IsolatedAsyncioTestCase):
     def reply(self, steps):
         return lambda prompt, system, name: (json.dumps({"steps": steps}), {"context": name, "prompt": prompt})

@@ -9,7 +9,6 @@ branch_labels = None
 depends_on = None
 
 
-# [explain] Creates the table that stores each SIEM's latest check-up.
 def upgrade():
     op.create_table(
         "siem_profiles",
@@ -25,6 +24,5 @@ def upgrade():
     )
 
 
-# [explain] Drops it.
 def downgrade():
     op.drop_table("siem_profiles")

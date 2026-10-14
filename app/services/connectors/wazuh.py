@@ -21,8 +21,6 @@ class WazuhConnectionError(Exception):
     pass
 
 
-# [explain] Talks to the Wazuh indexer (OpenSearch). It has no EQL, so the Sigma rule arrives as a Lucene text query.
-# [explain] What comes back are ALERTS raised by Wazuh's own rules, which we turn into the common event shape.
 class WazuhConnector(BaseSIEMConnector):
     """Connector for the Wazuh indexer.
 
@@ -52,11 +50,9 @@ class WazuhConnector(BaseSIEMConnector):
         self.index_pattern = index_pattern
         self.host_aliases = host_aliases or {}
 
-    # [explain] An HTTP client with the username/password and the choice to trust the lab's self-made certificate.
     def _client(self, timeout: float) -> httpx.AsyncClient:
         return httpx.AsyncClient(auth=self._auth, verify=self.verify_ssl, timeout=timeout)
 
-    # [explain] Turns {"from": ..., "to": ...} into a time filter for the search.
     @staticmethod
     def _range_filter(time_range: Optional[dict]) -> list:
         if not time_range:
@@ -68,7 +64,6 @@ class WazuhConnector(BaseSIEMConnector):
             bounds["lte"] = time_range["to"]
         return [{"range": {"@timestamp": bounds}}] if bounds else []
 
-    # [explain] Sends the Lucene search, newest first, and converts every alert into one or more normal events.
     async def run_query(
         self,
         query: str,
@@ -112,7 +107,6 @@ class WazuhConnector(BaseSIEMConnector):
             events.extend(wazuh_to_ecs_events(hit.get("_source", {}), self.host_aliases, name_filter))
         return events[:max_results]
 
-    # [explain] Healthy means: reachable, logged in, and the cluster is not red.
     async def test_connection(self) -> bool:
         """Health check — reachable, authenticated, and cluster not red."""
         try:
@@ -122,7 +116,6 @@ class WazuhConnector(BaseSIEMConnector):
         except (httpx.RequestError, ValueError):
             return False
 
-    # [explain] A machine can have different names in different SIEMs. host_aliases lets us find the Wazuh agent behind a host name.
     def _agent_names(self, host: Optional[str]) -> List[str]:
         """Wazuh agent names that stand for a host name: the name itself plus any aliased to it."""
         if not host:
@@ -130,7 +123,6 @@ class WazuhConnector(BaseSIEMConnector):
         names = [host] + [agent for agent, alias in self.host_aliases.items() if alias == host]
         return list(dict.fromkeys(names))
 
-    # [explain] Alerts around a finding: same host (agent), same process word in the alert text, or same user.
     async def fetch_context(
         self,
         kind: str,
@@ -176,7 +168,6 @@ class WazuhConnector(BaseSIEMConnector):
             events.extend(wazuh_to_ecs_events(hit.get("_source", {}), self.host_aliases))
         return events[:max_results]
 
-    # [explain] Same check-up as for Elastic, plus the most common alert descriptions.
     async def profile(self, window_days: int = 7) -> dict:
         fields = profile_fields(self.siem_type)
         body = {

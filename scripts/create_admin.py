@@ -9,8 +9,6 @@ from app.core.security import hash_password
 from app.models import User
 
 
-# [explain] Creates the very first admin account by asking for an email, a name and a password on the keyboard.
-# [explain] The password is scrambled (hashed) before it is saved.
 async def create_admin():
     email = input("Admin email: ").strip()
     full_name = input("Full name: ").strip()

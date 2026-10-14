@@ -14,8 +14,6 @@ class ConnectorError(Exception):
     pass
 
 
-# [explain] From a saved SIEM row to a ready-to-use connector: open the locked box, read the settings, build the right class.
-# [explain] Unknown types and missing settings fail loudly with a clear message.
 def get_connector(conn: SIEMConnection) -> BaseSIEMConnector:
     if isinstance(conn.config_encrypted, str):
         config = decrypt_config(conn.config_encrypted)

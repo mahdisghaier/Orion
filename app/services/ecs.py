@@ -4,7 +4,6 @@ from typing import Optional, Any
 from dateutil import parser as date_parser
 
 
-# [explain] Read a value deep inside a dictionary using a dotted path, e.g. "process.name", without crashing if a step is missing.
 def get_nested(d: dict, path: str, default: Any = None) -> Any:
     keys = path.split(".")
     for k in keys:
@@ -16,7 +15,6 @@ def get_nested(d: dict, path: str, default: Any = None) -> Any:
     return d
 
 
-# [explain] Turn a time written as text into a real date. If it has no time zone, assume UTC.
 def parse_event_time(ts: Optional[str]) -> Optional[datetime]:
     if not ts:
         return None
@@ -29,8 +27,6 @@ def parse_event_time(ts: Optional[str]) -> Optional[datetime]:
         return None
 
 
-# [explain] Pull the same handful of details out of any event (time, host, user, process, command, action, addresses)
-# [explain] so the rest of ORION does not care which SIEM the event came from.
 def extract_ecs_fields(raw_event: dict) -> dict:
     return {
         "event_time": parse_event_time(get_nested(raw_event, "@timestamp")) or datetime.now(timezone.utc),
@@ -44,7 +40,6 @@ def extract_ecs_fields(raw_event: dict) -> dict:
     }
 
 
-# [explain] A Sigma rule can carry tags like attack.t1046 (a technique) or attack.discovery (a tactic). Split them into the two lists.
 def extract_mitre_from_tags(tags: Optional[list]) -> tuple:
     if not tags:
         return ([], [])

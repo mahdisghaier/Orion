@@ -53,7 +53,6 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 
-// [explain] The form was sent: ask the auth store to log in, then go to the home page, or show why it failed.
 async function handleLogin() {
   error.value = ''
   try {

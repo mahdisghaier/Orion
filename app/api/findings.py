@@ -25,8 +25,6 @@ from app.schemas import (
 router = APIRouter()
 
 
-# [explain] The main list. By default it shows ONE row per behaviour (the newest), hides the ones an analyst marked
-# [explain] as known benign, and sorts by priority. Switches let you see everything.
 @router.get("/", response_model=PaginatedResponse)
 async def list_findings(
     page: int = Query(1, ge=1),
@@ -67,8 +65,6 @@ async def list_findings(
         conds.append(HuntResult.correlation_id.is_not(None) if corroborated else HuntResult.correlation_id.is_(None))
 
     if collapse_repeats and not hunt_id:
-        # [explain] For each fingerprint (= the same behaviour) pick only the newest finding. Filters are applied first,
-        # [explain] so a filter can never hide the only matching copy.
         latest_per_behaviour = (
             select(HuntResult.id)
             .where(HuntResult.fingerprint.is_not(None), *conds)
@@ -82,7 +78,6 @@ async def list_findings(
 
     total = (await db.execute(count_query)).scalar()
     offset = (page - 1) * page_size
-    # [explain] Priority order: highest score first, and among equals the newest first.
     order = (
         [HuntResult.priority_score.desc().nulls_last(), HuntResult.event_time.desc()]
         if sort == "priority" else [HuntResult.event_time.desc()]
@@ -99,7 +94,6 @@ async def list_findings(
     }
 
 
-# [explain] One finding with all its details, plus "also seen by" and "seen in earlier hunts" information.
 @router.get("/{finding_id}", response_model=HuntResultResponse)
 async def get_finding(
     finding_id: UUID,
@@ -116,9 +110,6 @@ async def get_finding(
     return finding
 
 
-# [explain] The "Related events" button: shows what the SIEM recorded around this finding.
-# [explain] The analyst can only pick host, process or user and a time window, never type a query (so nothing can be injected).
-# [explain] Every use is written in the audit diary.
 @router.get("/{finding_id}/context", response_model=FindingContextResponse)
 async def get_finding_context(
     finding_id: UUID,
@@ -162,9 +153,6 @@ async def get_finding_context(
     )
 
 
-# [explain] "This is known benign, stop showing it." Remembers the finding's fingerprint, hides every unreviewed copy,
-# [explain] and will flag new copies in future hunts. Findings already validated/escalated are never hidden.
-# [explain] L2+ only, reversible, audited.
 @router.post("/{finding_id}/suppress", response_model=SuppressionResult)
 async def suppress_finding(
     finding_id: UUID,
@@ -222,7 +210,6 @@ async def suppress_finding(
     return SuppressionResult(suppression_id=suppression.id, affected=result.rowcount)
 
 
-# [explain] Undo a suppression: everything it hid becomes visible again.
 @router.delete("/{finding_id}/suppress", response_model=SuppressionResult)
 async def unsuppress_finding(
     finding_id: UUID,
@@ -263,8 +250,6 @@ async def unsuppress_finding(
     return SuppressionResult(suppression_id=suppression.id, affected=result.rowcount)
 
 
-# [explain] L2+ analyst validates a finding, marks it a false positive, or comments.
-# [explain] The priority of every copy of this behaviour is recomputed, because the analyst's decision is evidence.
 @router.patch("/{finding_id}", response_model=HuntResultResponse)
 async def update_finding(
     finding_id: UUID,
@@ -305,7 +290,6 @@ async def update_finding(
     return finding
 
 
-# [explain] Turns a finding into an incident (new or existing), marks it escalated and rescoring follows.
 @router.post("/{finding_id}/escalate", response_model=IncidentResponse)
 async def escalate_finding(
     finding_id: UUID,

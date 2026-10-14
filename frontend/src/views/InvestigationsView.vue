@@ -76,7 +76,6 @@ const hypothesis = ref('')
 const saving = ref(false)
 const formError = ref('')
 
-// [explain] Fetch the list of hunt notebooks.
 async function load() {
   loading.value = true
   loadError.value = ''
@@ -89,7 +88,6 @@ async function load() {
   }
 }
 
-// [explain] Open a new notebook (title + hunch) and jump into it.
 async function create() {
   saving.value = true
   formError.value = ''

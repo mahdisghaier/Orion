@@ -60,5 +60,4 @@ class Settings(BaseSettings):
     GEMINI_FALLBACK_MODELS: str = "gemini-3.7-flash,gemini-flash-latest,gemini-3.1-flash-lite"
 
 # Singleton — import this everywhere: `from app.core.config import settings`
-# [explain] The one settings object the whole app imports. It reads its values from environment variables / the .env file.
 settings = Settings()

@@ -21,7 +21,6 @@ from .state import ChatState
 from .nodes import understand_intent, generate_sigma, run_hunt, explain_findings
 
 
-# [explain] The fork in the road after the rule is written: yes = run it, no = stop, not answered yet = wait.
 def should_wait_for_confirmation(state: ChatState) -> str:
     """Decide whether to wait for user confirmation or proceed to run the hunt."""
     if state.get("confirmed") is True:
@@ -32,7 +31,6 @@ def should_wait_for_confirmation(state: ChatState) -> str:
         return "wait"
 
 
-# [explain] Draws the flowchart: understand the request, write the rule, then WAIT for the analyst. The hunt itself is run from /confirm.
 def build_graph():
     """Build the LangGraph agent workflow."""
     workflow = StateGraph(ChatState)
@@ -70,5 +68,4 @@ def build_graph():
 
 
 # Singleton — import this everywhere
-# [explain] Built once when the server starts, and reused by every chat message.
 agent_graph = build_graph()

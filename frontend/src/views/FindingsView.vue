@@ -56,7 +56,6 @@
       <p class="text-sm text-gray-400 mt-2">Run a hunt to see findings here.</p>
     </div>
 
-    <!-- [explain] One row per behaviour. The priority badge shows the score (hover for the reasons); the SIEM column shows who saw it, and "also in" who else did. -->
     <!-- Findings table -->
     <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <table class="w-full text-sm">
@@ -188,7 +187,6 @@ const filters = reactive({
   sort: 'priority' as 'priority' | 'time',
 })
 
-// [explain] Fetch the list with the chosen filters. If the server cannot be reached we show an error, never an empty list.
 async function loadFindings() {
   loading.value = true
   loadError.value = ''
@@ -231,14 +229,12 @@ function prevPage() {
   }
 }
 
-// [explain] Red from 70, amber from 40, grey below.
 function priorityBadge(score: number): string {
   if (score >= 70) return 'bg-red-100 text-red-800'
   if (score >= 40) return 'bg-amber-100 text-amber-800'
   return 'bg-gray-100 text-gray-700'
 }
 
-// [explain] A colour per SIEM so they are told apart at a glance.
 function siemBadge(siem: string): string {
   if (siem === 'elastic') return 'bg-yellow-100 text-yellow-800'
   if (siem === 'wazuh') return 'bg-green-100 text-green-800'

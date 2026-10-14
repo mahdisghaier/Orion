@@ -10,7 +10,6 @@ NEW = "IN ('sentinel','elastic','wazuh')"
 OLD = "IN ('sentinel','elastic')"
 
 
-# [explain] Lets the database accept wazuh as a SIEM type (it only knew sentinel and elastic).
 def upgrade():
     op.drop_constraint("ck_siem_type", "siem_connections", type_="check")
     op.create_check_constraint("ck_siem_type", "siem_connections", "type " + NEW)
@@ -18,7 +17,6 @@ def upgrade():
     op.create_check_constraint("ck_results_siem_type", "hunt_results", "siem_type " + NEW)
 
 
-# [explain] Goes back to the two original SIEM types.
 def downgrade():
     op.drop_constraint("ck_siem_type", "siem_connections", type_="check")
     op.create_check_constraint("ck_siem_type", "siem_connections", "type " + OLD)

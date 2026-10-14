@@ -28,8 +28,6 @@ MAX_DETERMINISTIC = 2
 
 LLMCall = Callable[[str, str, str], Tuple[str, dict]]       # (prompt, system_prompt, name) -> (text, audit)
 
-# [explain] The instructions given to the AI planner: what it may propose, what facts to cite, that log text is untrusted,
-# [explain] and that it must answer in JSON only.
 SYSTEM_PROMPT = (
     "You are ORION's hunting planner for a SOC. An analyst is testing the hypothesis below. Propose at most 3 "
     "NEXT steps. A human approves every step before anything runs, so be specific and economical.\n"
@@ -57,7 +55,6 @@ SYSTEM_PROMPT = (
 )
 
 
-# [explain] What a planning round returns: steps to store, proposals thrown away (with the reason), AI calls to audit, notes for the screen.
 @dataclass
 class Proposal:
     steps: List[dict] = field(default_factory=list)       # ready to store as InvestigationStep rows
@@ -66,7 +63,6 @@ class Proposal:
     notes: List[str] = field(default_factory=list)
 
 
-# [explain] A fingerprint of a rule's content, so the same rule is not proposed twice.
 def rule_signature(sigma_yaml: str) -> str:
     try:
         canonical = yaml.safe_dump(yaml.safe_load(sigma_yaml), sort_keys=True)
@@ -81,7 +77,6 @@ def step_signature(kind: str, payload: dict) -> str:
     return f"pivot:{payload.get('finding_id')}:{payload.get('pivot')}"
 
 
-# [explain] Dig the JSON out of the AI's answer (it may be wrapped in a markdown block) and check its shape.
 def parse_llm_json(text: str) -> dict:
     """Extract the JSON object from a reply that may be wrapped in a markdown fence."""
     cleaned = text.strip()
@@ -99,8 +94,6 @@ def parse_llm_json(text: str) -> dict:
 
 # ── deterministic suggestions (no LLM) ───────────────────────────────────────────
 
-# [explain] Suggestions that need no AI: look around the top finding's process, then its host, then its user.
-# [explain] They are what the analyst gets even when the AI is down.
 def deterministic_pivots(context: dict, existing: set) -> List[dict]:
     """Pivot on the highest-priority finding: process first, then host, then user."""
     findings = context.get("findings", [])
@@ -131,15 +124,12 @@ def deterministic_pivots(context: dict, existing: set) -> List[dict]:
 
 # ── validation of LLM proposals ──────────────────────────────────────────────────
 
-# [explain] Keep only the evidence the AI cited that really exists (a listed finding or a measured field). Invented evidence does not count.
 def _valid_cites(cites, finding_ids: set, field_names: set) -> List[str]:
     if not isinstance(cites, list):
         return []
     return [c for c in (str(x) for x in cites) if c in finding_ids or c in field_names]
 
 
-# [explain] Can this rule really run? For each SIEM: is there a field for it, and do recent events carry it?
-# [explain] A rule that only an archive could run is refused when live SIEMs are selected.
 def assess_rule(sigma_yaml: str, targets: List[dict]) -> Tuple[Optional[dict], Optional[str]]:
     """Per-target runnability of a rule. Returns (assessment, None) or (None, rejection reason)."""
     try:
@@ -177,8 +167,6 @@ def assess_rule(sigma_yaml: str, targets: List[dict]) -> Tuple[Optional[dict], O
     return {"runnable": True, "targets": per_target}, None
 
 
-# [explain] The bouncer for AI proposals. Each one must have a rationale, cite real evidence, be runnable, and not be a duplicate.
-# [explain] Whatever fails is refused and reported with its reason; the analyst never sees it.
 def validate_llm_steps(raw_steps: list, context: dict, targets: List[dict],
                        existing: set) -> Tuple[List[dict], List[dict]]:
     finding_by_id = {f["id"]: f for f in context.get("findings", [])}
@@ -246,7 +234,6 @@ def validate_llm_steps(raw_steps: list, context: dict, targets: List[dict],
 
 # ── orchestration ────────────────────────────────────────────────────────────────
 
-# [explain] Writes the question for the AI: the analyst's hunch, then the facts inside a fence marked as untrusted data.
 def build_prompt(hypothesis: str, context: dict) -> str:
     data = json.dumps(context, ensure_ascii=False, default=str)
     return (
@@ -256,7 +243,6 @@ def build_prompt(hypothesis: str, context: dict) -> str:
     )
 
 
-# [explain] The real call to the configured AI (tests replace this with a fake).
 def default_llm_call(prompt: str, system_prompt: str, name: str) -> Tuple[str, dict]:
     from app.services.agent.llm import get_llm, llm_call_with_audit
     return llm_call_with_audit(get_llm(), prompt, system_prompt, name)
@@ -265,8 +251,6 @@ def default_llm_call(prompt: str, system_prompt: str, name: str) -> Tuple[str, d
 LLM_GUARD_SECONDS = 60.0     # hard ceiling on the whole model call, whatever the client does
 
 
-# [explain] Puts it together: rule-based suggestions first, then validated AI proposals. The AI call is cut off after 60 s;
-# [explain] if it fails or answers badly we still return the rule-based suggestions with a note.
 async def propose_steps(context: dict, hypothesis: str, targets: List[dict], existing: set,
                         llm_call: Optional[LLMCall] = None, guard_seconds: float = LLM_GUARD_SECONDS) -> Proposal:
     """Deterministic pivots first, then validated LLM proposals, at most MAX_STEPS in total."""

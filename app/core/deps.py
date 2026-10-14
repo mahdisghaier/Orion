@@ -24,8 +24,6 @@ from app.core.security import decode_token
 from app.models import User
 
 
-# [explain] Used on every protected address. It finds the ticket (in the cookie, or in an Authorization header),
-# [explain] checks it, and loads the user from the database. No valid ticket means 401 (not allowed in).
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -82,7 +80,6 @@ async def get_current_user(
     return user
 
 
-# [explain] Builds a bouncer: only users whose role is in the allowed list get through, the others get 403.
 def require_role(*allowed_roles: str) -> Callable:
     """Dependency factory: require the user to have one of the allowed roles.
 
@@ -105,7 +102,6 @@ def require_role(*allowed_roles: str) -> Callable:
 
 
 # Convenience aliases
-# [explain] Ready-made bouncers: admin only, L2 and above, L3 and above.
 require_admin = require_role("admin")
 require_l2_plus = require_role("soc_l2", "soc_l3", "admin")
 require_l3_plus = require_role("soc_l3", "admin")

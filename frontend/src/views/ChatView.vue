@@ -82,7 +82,6 @@ const inputMessage = ref('')
 const siemConnections = ref<SIEMConnection[]>([])
 const selectedSIEMs = ref<string[]>([])
 
-// [explain] Load the SIEMs the AI may ask; all are ticked by default.
 async function loadSIEMs() {
   try {
     siemConnections.value = await getSIEMConnections()
@@ -92,7 +91,6 @@ async function loadSIEMs() {
   }
 }
 
-// [explain] Send the analyst's message to the AI (through the chat store).
 async function send() {
   if (!inputMessage.value.trim() || selectedSIEMs.value.length === 0) return
   const msg = inputMessage.value

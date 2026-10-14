@@ -13,7 +13,6 @@ DIR="$(getent passwd "$SUDO_USER" | cut -d: -f6)/orion-eval-fim"
 LINE="<directories realtime=\"yes\" check_all=\"yes\">$DIR</directories>"
 [ -f "$CONF" ] || { echo "$CONF not found: is the Wazuh agent installed?"; exit 1; }
 
-# [explain] --undo: stop watching the folder again (removes the line we added).
 if [ "${1:-}" = "--undo" ]; then
   python3 - "$CONF" "$LINE" <<'PY'
 import sys
@@ -26,7 +25,6 @@ PY
   exit 0
 fi
 
-# [explain] Create the scratch folder that will be watched, owned by you (not by root).
 mkdir -p "$DIR"
 chown "$SUDO_USER":"$SUDO_USER" "$DIR"
 
@@ -47,7 +45,6 @@ PY
   echo "added: $LINE"
 fi
 
-# [explain] Restart the agent so it reads its new configuration.
 systemctl restart wazuh-agent
 sleep 3
 systemctl is-active wazuh-agent

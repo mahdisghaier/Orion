@@ -44,7 +44,6 @@ from app.services.investigation.proposer import assess_rule, propose_steps, step
 router = APIRouter()
 
 
-# [explain] Fetch an investigation together with its steps, or answer 404.
 async def _load(db: AsyncSession, investigation_id: UUID) -> Investigation:
     inv = (await db.execute(
         select(Investigation).options(selectinload(Investigation.steps)).where(Investigation.id == investigation_id)
@@ -54,14 +53,11 @@ async def _load(db: AsyncSession, investigation_id: UUID) -> Investigation:
     return inv
 
 
-# [explain] A concluded investigation is a closed record: nobody may add or run steps anymore.
 def _require_open(inv: Investigation) -> None:
     if inv.status != "open":
         raise HTTPException(status_code=409, detail="This investigation is concluded")
 
 
-# [explain] Opens a new notebook page: a title and a hunch (hypothesis). It can start from a finding.
-# [explain] If no SIEMs are named, all active ones are used.
 @router.post("/", response_model=InvestigationResponse, status_code=201)
 async def create_investigation(
     payload: InvestigationCreate,
@@ -98,7 +94,6 @@ async def create_investigation(
     return await _load(db, inv.id)
 
 
-# [explain] The list of investigations, newest first.
 @router.get("/", response_model=list[InvestigationResponse])
 async def list_investigations(
     db: AsyncSession = Depends(get_db),
@@ -110,7 +105,6 @@ async def list_investigations(
     return rows
 
 
-# [explain] One investigation with every step and what came out of it.
 @router.get("/{investigation_id}", response_model=InvestigationResponse)
 async def get_investigation(
     investigation_id: UUID,
@@ -120,8 +114,6 @@ async def get_investigation(
     return await _load(db, investigation_id)
 
 
-# [explain] "What should we look at next?" ORION suggests steps (rule-based pivots, plus AI proposals).
-# [explain] The AI's suggestions are checked by code first. Nothing runs here: the steps just wait for the analyst's yes.
 @router.post("/{investigation_id}/propose", response_model=ProposeResponse)
 async def propose(
     investigation_id: UUID,
@@ -137,12 +129,9 @@ async def propose(
     targets = await _siem_targets(db, inv)
     existing = {step_signature(s.kind, s.payload) for s in inv.steps}
 
-    # [explain] Ask the planner. If the AI is down or answers badly, it still returns the rule-based suggestions.
     proposal = await propose_steps(context, inv.hypothesis, targets, existing)
 
     # Full audit trail of every model call (prompt, the facts it was given, raw reply, what validation did)
-    # [explain] Save every AI call in the diary (llm_audit): the question, the facts we gave it, its raw answer,
-    # [explain] and whether validation threw its proposals away.
     for audit in proposal.audits:
         db.add(LLMAudit(
             user_id=current_user.id,
@@ -181,7 +170,6 @@ async def propose(
     )
 
 
-# [explain] The SIEMs of this investigation with their latest check-up, as the planner and validator need them.
 async def _siem_targets(db: AsyncSession, inv: Investigation) -> list:
     connections = (await db.execute(
         select(SIEMConnection).where(SIEMConnection.id.in_(inv.siem_targets), SIEMConnection.is_active.is_(True))
@@ -196,8 +184,6 @@ async def _siem_targets(db: AsyncSession, inv: Investigation) -> list:
             for c in connections]
 
 
-# [explain] The analyst writes a rule step by hand. It goes through the same checks as an AI suggestion
-# [explain] (can it run on a live SIEM?) and still waits for approval.
 @router.post("/{investigation_id}/steps", response_model=InvestigationStepResponse, status_code=201)
 async def add_step(
     investigation_id: UUID,
@@ -231,7 +217,6 @@ async def add_step(
     return step
 
 
-# [explain] Find a step and make sure it is still waiting for a decision (you cannot approve twice).
 async def _step_of(inv: Investigation, step_id: UUID) -> InvestigationStep:
     step = next((s for s in inv.steps if s.id == step_id), None)
     if step is None:
@@ -241,7 +226,6 @@ async def _step_of(inv: Investigation, step_id: UUID) -> InvestigationStep:
     return step
 
 
-# [explain] THE key moment: the analyst says yes. Only now does the step run, and what happens is saved.
 @router.post("/{investigation_id}/steps/{step_id}/approve", response_model=InvestigationStepResponse)
 async def approve_step(
     investigation_id: UUID,
@@ -262,7 +246,6 @@ async def approve_step(
     step.decision_comment = decision.comment
     await db.flush()
 
-    # [explain] Run it: a rule is hunted on the SIEMs, a pivot looks around a finding. Errors are recorded, never lost.
     await execute_step(db, inv, step, current_user)
 
     await log_action(
@@ -277,7 +260,6 @@ async def approve_step(
     return step
 
 
-# [explain] The analyst says no. The step stays in the record (with the reason) but never runs.
 @router.post("/{investigation_id}/steps/{step_id}/reject", response_model=InvestigationStepResponse)
 async def reject_step(
     investigation_id: UUID,
@@ -304,7 +286,6 @@ async def reject_step(
     return step
 
 
-# [explain] Close the investigation with a verdict (true positive, false positive, inconclusive) and a written conclusion. L2+ only.
 @router.post("/{investigation_id}/conclude", response_model=InvestigationResponse)
 async def conclude(
     investigation_id: UUID,
@@ -329,7 +310,6 @@ async def conclude(
     return await _load(db, inv.id)
 
 
-# [explain] Every download of a report or notebook is written in the audit diary.
 async def _audited_export(db: AsyncSession, request: Request, user: User, inv: Investigation, kind: str) -> None:
     await log_action(
         db, user_id=user.id, action="investigation.export", target_type="investigation", target_id=inv.id,
@@ -338,7 +318,6 @@ async def _audited_export(db: AsyncSession, request: Request, user: User, inv: I
     await db.commit()
 
 
-# [explain] Builds the PDF report from the saved record only (an open investigation is stamped DRAFT).
 @router.get("/{investigation_id}/report.pdf")
 async def export_report(
     investigation_id: UUID,
@@ -354,7 +333,6 @@ async def export_report(
                     headers={"Content-Disposition": f'attachment; filename="{slug(inv.title)}-report.pdf"'})
 
 
-# [explain] Builds the Jupyter notebook that can replay the approved steps. It contains no passwords.
 @router.get("/{investigation_id}/notebook")
 async def export_notebook(
     investigation_id: UUID,

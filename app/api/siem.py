@@ -25,8 +25,6 @@ from app.services.connectors.factory import ConnectorError, get_connector
 router = APIRouter()
 
 
-# [explain] Admin registers a SIEM (Elastic, Wazuh...). The address and password are locked in an encrypted box before saving.
-# [explain] Wazuh must come with a url, username and password, otherwise we refuse right away.
 @router.post("/", response_model=SIEMConnectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_siem_connection(
     payload: SIEMConnectionCreate,
@@ -54,7 +52,6 @@ async def create_siem_connection(
     return connection
 
 
-# [explain] The list of connected SIEMs. The secret box is never sent back, only the name, type and status.
 @router.get("/", response_model=list[SIEMConnectionResponse])
 async def list_siem_connections(
     current_user: User = Depends(require_admin),
@@ -65,7 +62,6 @@ async def list_siem_connections(
     return result.scalars().all()
 
 
-# [explain] One connected SIEM (name, type, status only).
 @router.get("/{connection_id}", response_model=SIEMConnectionResponse)
 async def get_siem_connection(
     connection_id: UUID,
@@ -80,7 +76,6 @@ async def get_siem_connection(
     return connection
 
 
-# [explain] "Can ORION reach it and log in?" Opens the box, tries the connection, and says how long it took.
 @router.post("/{connection_id}/test", response_model=SIEMConnectionTestResult)
 async def test_siem_connection(
     connection_id: UUID,
@@ -108,8 +103,6 @@ async def test_siem_connection(
     )
 
 
-# [explain] Takes a health check-up of the SIEM: how many events, when the last one arrived, which details are really filled in.
-# [explain] The result replaces the previous one and is used to warn about blind spots.
 @router.post("/{connection_id}/profile", response_model=SIEMProfileResponse)
 async def collect_siem_profile(
     connection_id: UUID,
@@ -151,7 +144,6 @@ async def collect_siem_profile(
     return row
 
 
-# [explain] Reads the latest check-up. Any logged-in user may read it; only an admin can refresh it.
 @router.get("/{connection_id}/profile", response_model=SIEMProfileResponse)
 async def get_siem_profile(
     connection_id: UUID,
@@ -167,7 +159,6 @@ async def get_siem_profile(
     return row
 
 
-# [explain] "Delete" only switches the SIEM off (soft delete): old findings still point to it, so the row must stay.
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deactivate_siem_connection(
     connection_id: UUID,

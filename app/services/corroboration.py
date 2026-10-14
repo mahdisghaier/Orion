@@ -8,7 +8,6 @@ from app.models import HuntResult
 from app.services.prioritization import fingerprint_stats
 
 
-# [explain] For each finding, look up the OTHER findings that share its correlation id ("also seen by Wazuh").
 async def attach_corroboration(db: AsyncSession, findings: Iterable[HuntResult]) -> List[HuntResult]:
     """Set `corroborated_by` on each finding: the OTHER findings sharing its correlation_id.
 
@@ -29,7 +28,6 @@ async def attach_corroboration(db: AsyncSession, findings: Iterable[HuntResult])
     return findings
 
 
-# [explain] For each finding, count how many earlier hunts already produced the same behaviour ("not new").
 async def attach_history(db: AsyncSession, findings: Iterable[HuntResult]) -> List[HuntResult]:
     """Set `previous_hunts` and `known_since` on each finding.
 
@@ -45,7 +43,6 @@ async def attach_history(db: AsyncSession, findings: Iterable[HuntResult]) -> Li
     return findings
 
 
-# [explain] One call that adds both extras before a finding is sent to the screen.
 async def enrich_findings(db: AsyncSession, findings: Iterable[HuntResult]) -> List[HuntResult]:
     findings = list(findings)
     await attach_corroboration(db, findings)

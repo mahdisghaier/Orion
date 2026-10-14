@@ -18,7 +18,6 @@ def profile(siem="elastic", recent=100, present=None):
                          latest="2026-01-08T00:00:00Z", field_counts=fields, top=[("system.process", 100)])
 
 
-# [explain] The SIEM check-up and its percentages.
 class Profile(unittest.TestCase):
     def test_profiled_fields_cover_every_mapping_target(self):
         self.assertTrue({"process.executable", "process.parent.executable", "host.name"} <= set(profile_fields("elastic")))
@@ -32,7 +31,6 @@ class Profile(unittest.TestCase):
         self.assertEqual(build_profile("elastic", 7, 0, 0, None, None, {"host.name": 0}, [])["fields"]["host.name"]["pct"], 0.0)
 
 
-# [explain] A field with no recent events is a blind spot; a silent archive is never judged.
 class BlindSpots(unittest.TestCase):
     def test_field_with_no_events_is_a_blind_spot(self):
         p = profile(present={"process.parent.executable": 0})
@@ -59,7 +57,6 @@ class BlindSpots(unittest.TestCase):
         self.assertEqual(blind_spots({"CommandLine", "Computer"}, "wazuh", p), ["CommandLine -> data.command"])
 
 
-# [explain] The check-up queries sent to Elastic and Wazuh (against fake servers).
 class ProfileQueries(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def aggs(fields, top_key):

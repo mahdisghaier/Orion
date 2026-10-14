@@ -24,8 +24,6 @@ from app.models import HuntResult  # noqa: E402
 from app.services.grouping import fingerprint  # noqa: E402
 
 
-# [explain] For old findings without a name tag (fingerprint), compute it from what is already stored.
-# [explain] Without --apply it only reports what it would do.
 async def main(apply: bool) -> None:
     logging.disable(logging.CRITICAL)
     async with async_session() as db:

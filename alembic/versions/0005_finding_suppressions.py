@@ -9,7 +9,6 @@ branch_labels = None
 depends_on = None
 
 
-# [explain] Creates the table of "known benign" decisions and the link from findings to it.
 def upgrade():
     op.create_table(
         "finding_suppressions",
@@ -34,7 +33,6 @@ def upgrade():
     op.create_index("idx_results_suppression", "hunt_results", ["suppression_id"], unique=False)
 
 
-# [explain] Drops that table and link.
 def downgrade():
     op.drop_index("idx_results_suppression", table_name="hunt_results")
     op.drop_constraint("fk_results_suppression", "hunt_results", type_="foreignkey")

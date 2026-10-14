@@ -79,7 +79,6 @@ SYSCHECK_ALERT = {
 }
 
 
-# [explain] File-integrity alerts become file events.
 class SyscheckAlerts(unittest.TestCase):
     def test_file_alert_becomes_a_file_event(self):
         (e,) = wazuh_to_ecs_events(SYSCHECK_ALERT)
@@ -103,7 +102,6 @@ detection:
         self.assertEqual(unmapped_fields(rule, "wazuh"), [])
 
 
-# [explain] The Sigma-to-Wazuh query translation, and which rules are runnable.
 class SigmaToLucene(unittest.TestCase):
     def test_image_becomes_basename_tokens(self):
         # pySigma's default "*\/nc" matches nothing on the analysed full_log text field
@@ -127,7 +125,6 @@ class SigmaToLucene(unittest.TestCase):
         self.assertEqual(unmapped_fields(rule, "unknown-siem"), [])
 
 
-# [explain] The listening-ports table: only what changed becomes an event.
 class NetstatDiff(unittest.TestCase):
     def test_parses_both_line_shapes(self):
         parsed = parse_netstat_lines("\n".join([HEADER, *BASE_PORTS, NC_LINE]))
@@ -166,7 +163,6 @@ class NetstatDiff(unittest.TestCase):
         self.assertIsNone(query_process_names("data.srcuser:analyst"))
 
 
-# [explain] Other Wazuh alerts (sudo...) and the final field extraction.
 class GenericAlerts(unittest.TestCase):
     def test_sudo_alert(self):
         (e,) = wazuh_to_ecs_events(SUDO_ALERT, host_aliases={"Lab-Host": "workstation-1"})
@@ -191,7 +187,6 @@ class GenericAlerts(unittest.TestCase):
         self.assertEqual(fields["event_time"].year, 2026)
 
 
-# [explain] What the Wazuh connector sends and how it reacts to errors (against a fake server).
 class ConnectorRequest(unittest.IsolatedAsyncioTestCase):
     def make(self, handler):
         connector = WazuhConnector("https://wazuh.example:9200/", "user", "pw", verify_ssl=False)

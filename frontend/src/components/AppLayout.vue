@@ -47,7 +47,6 @@ import { Target, Bug, Server, Users, LogOut, MessageCircle, Search } from 'lucid
 const auth = useAuthStore()
 const route = useRoute()
 
-// [explain] The menu. Admins also see SIEM Connections and Users.
 const navItems = computed(() => {
   const items = [
     { path: '/chat', label: 'AI Assistant', icon: MessageCircle },

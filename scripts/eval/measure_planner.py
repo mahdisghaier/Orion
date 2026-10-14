@@ -29,7 +29,6 @@ from scripts.eval.run_evaluation import live_connectors, log  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "evaluation"
 
-# [explain] The hunches the planner is tested with. Each one maps to a technique the lab can actually produce.
 HYPOTHESES = [
     "An attacker left a netcat listener on the workstation to keep access.",
     "Someone is downloading tools onto the workstation with curl or wget.",
@@ -39,7 +38,6 @@ HYPOTHESES = [
 ]
 
 
-# [explain] A canned model reply, only for the --stub dry run of this script.
 def _stub_call(prompt, system_prompt, name):
     ctx = json.loads(prompt.split("<untrusted_data>")[1].split("</untrusted_data>")[0])
     rule = ("title: stub\nlogsource: {product: linux, category: process_creation}\ndetection:\n  selection:\n"
@@ -51,7 +49,6 @@ def _stub_call(prompt, system_prompt, name):
                   "model": "stub", "provider": "stub", "latency_ms": 1}
 
 
-# [explain] One hunch: ask the planner, count what validation kept, and try the accepted AI rules on the live SIEMs.
 async def measure_one(hypothesis: str, live: list, call) -> dict:
     inv = SimpleNamespace(id=uuid.uuid4(), title=hypothesis[:60], hypothesis=hypothesis,
                           siem_targets=[s["id"] for s in live], steps=[], source_finding_id=None)
@@ -85,7 +82,6 @@ async def measure_one(hypothesis: str, live: list, call) -> dict:
             "rejection_reasons": [r["reason"][:90] for r in rejected], "rule_runs": ran}
 
 
-# [explain] Writes the markdown report. If the model never answered it says NOT MEASURED, and never invents a number.
 def render(results: list, meta: dict) -> str:
     answered = [r for r in results if r["ai_answered"]]
     lines = ["# ORION planner measurement", "",
@@ -126,7 +122,6 @@ def render(results: list, meta: dict) -> str:
     return "\n".join(lines)
 
 
-# [explain] Runs every hunch once and writes the report, or "not measured" when the model cannot answer.
 async def main_async(stub: bool) -> None:
     live = await live_connectors()
     if not live:

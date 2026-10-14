@@ -11,8 +11,6 @@ interface User {
   created_at: string
 }
 
-// [explain] The browser's memory of who is logged in. Every page can read it, so the menu and buttons match the user's role.
-// [explain] The real permission checks are on the server; hiding a button here is only for comfort.
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(false)
@@ -23,7 +21,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => role.value === 'admin')
   const isL2Plus = computed(() => ['soc_l2', 'soc_l3', 'admin'].includes(role.value || ''))
 
-  // [explain] Send the credentials; on success the server sets the cookies and we load who we are.
   async function login(email: string, password: string) {
     loading.value = true
     try {
@@ -34,7 +31,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // [explain] Ask "who am I?". No answer means nobody is logged in.
   async function fetchUser() {
     try {
       const { data } = await api.get('/auth/me')
@@ -46,7 +42,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // [explain] Tell the server to clear the cookies, forget the user here, and go to the login page.
   async function logout() {
     try {
       await api.post('/auth/logout')

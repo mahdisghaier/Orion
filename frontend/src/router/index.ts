@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/AppLayout.vue'
 
-// [explain] The map of the website: which address shows which page. Pages are loaded only when first visited.
 const routes = [
   {
     path: '/login',
@@ -89,8 +88,6 @@ const router = createRouter({
   routes,
 })
 
-// [explain] The guard at every door: find out who is logged in once, send strangers to the login page and
-// [explain] send users away from pages meant for another role. (The server checks again on every call.)
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 

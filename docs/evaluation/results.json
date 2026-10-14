@@ -1,10 +1,10 @@
 {
  "meta": {
-  "date": "2026-10-14 21:06",
-  "commit": "d0eb696",
+  "date": "2026-10-14 21:57",
+  "commit": "ab09db2",
   "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
   "python": "3.12.13",
-  "run_id": "205823"
+  "run_id": "215625"
  },
  "techniques": [
   {
@@ -254,18 +254,62 @@
      "by_priority": 1.0
     }
    }
+  },
+  {
+   "key": "T1565.001",
+   "name": "File modification in a watched folder",
+   "tactic": "impact",
+   "per_siem": {
+    "Local Wazuh (wsl-ubuntu)": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "file": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 20
+      }
+     },
+     "raw_events": 3,
+     "noise_events": 0,
+     "behaviours": 3,
+     "noise_behaviours": 0
+    },
+    "Local Elastic (Metricbeat lab)": {
+     "type": "elastic",
+     "runnable": false,
+     "reasons": [
+      "blind spot: TargetFilename -> file.path"
+     ],
+     "variants": {}
+    }
+   },
+   "ranking": {
+    "measured": true,
+    "behaviours": 3,
+    "true_positives": 3,
+    "p_at_1": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    },
+    "p_at_3": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    }
+   }
   }
  ],
  "sources": [
   {
    "name": "Local Wazuh (wsl-ubuntu)",
    "type": "wazuh",
-   "recent_events": 83
+   "recent_events": 118
   },
   {
    "name": "Local Elastic (Metricbeat lab)",
    "type": "elastic",
-   "recent_events": 63204
+   "recent_events": 69768
   }
  ]
 }

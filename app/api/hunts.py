@@ -15,8 +15,6 @@ from app.services.hunt_runner import HuntRunner, HuntRunnerError
 router = APIRouter()
 
 
-# [explain] Start a search. The analyst gives a Sigma rule (saved one or pasted text) and which SIEMs to ask.
-# [explain] The real work happens in HuntRunner; this function only checks the request and turns errors into answers.
 @router.post("/", response_model=HuntResponse, status_code=status.HTTP_201_CREATED)
 async def create_hunt(
     hunt_data: HuntCreate,
@@ -30,7 +28,6 @@ async def create_hunt(
             detail="Either rule_id or rule_yaml must be provided"
         )
 
-    # [explain] HuntRunner does the whole job: convert the rule, ask each SIEM, group and score what comes back, save it.
     runner = HuntRunner(db)
     try:
         hunt = await runner.create_and_run(
@@ -48,7 +45,6 @@ async def create_hunt(
     return hunt
 
 
-# [explain] The list of past searches, newest first, 20 per page.
 @router.get("/", response_model=PaginatedResponse)
 async def list_hunts(
     page: int = Query(1, ge=1),
@@ -81,7 +77,6 @@ async def list_hunts(
     }
 
 
-# [explain] One search: its status, the queries sent to each SIEM, how many findings.
 @router.get("/{hunt_id}", response_model=HuntResponse)
 async def get_hunt(
     hunt_id: UUID,
@@ -95,7 +90,6 @@ async def get_hunt(
     return hunt
 
 
-# [explain] The findings of one search, highest priority first.
 @router.get("/{hunt_id}/results", response_model=List[HuntResultResponse])
 async def get_hunt_results(
     hunt_id: UUID,

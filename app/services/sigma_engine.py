@@ -20,7 +20,6 @@ from sigma.types import SigmaString
 # built-in ecs_windows (which is scoped to product: windows only).
 # Maps Sigma's generic process_creation taxonomy to ECS field names.
 # ─────────────────────────────────────────────────────────────────
-# [explain] The dictionary that translates Sigma's field names into Elastic's (Image becomes process.executable, and so on).
 _ECS_FIELD_MAPPING = {
     "Image": "process.executable",
     "CommandLine": "process.command_line",
@@ -33,7 +32,6 @@ _ECS_FIELD_MAPPING = {
     "ParentProcessId": "process.parent.pid",
 }
 
-# [explain] The Sigma library applies that dictionary to a rule through this small pipeline before writing the EQL query.
 orion_ecs_pipeline = ProcessingPipeline(
     name="orion_generic_ecs",
     priority=20,
@@ -65,8 +63,6 @@ orion_ecs_pipeline = ProcessingPipeline(
 #   Computer     -> agent.name    keyword
 #   TargetFilename -> syscheck.path  keyword; file-integrity alerts (rules 550/553/554)
 # ─────────────────────────────────────────────────────────────────
-# [explain] The same translation for Wazuh. Only fields that really exist in some Wazuh alert are listed;
-# [explain] anything else (like ParentImage) makes the rule "not runnable" there instead of silently finding nothing.
 _WAZUH_FIELD_MAPPING = {
     "Image": "full_log",
     "CommandLine": "data.command",
@@ -78,15 +74,12 @@ _WAZUH_FIELD_MAPPING = {
 }
 
 # Sigma fields each SIEM profile can express. Used for runnable / not-runnable.
-# [explain] For each SIEM, the Sigma fields it can express. Used to decide runnable / not runnable.
 SIEM_FIELD_PROFILES = {
     "elastic": frozenset(_ECS_FIELD_MAPPING),
     "wazuh": frozenset(_WAZUH_FIELD_MAPPING),
 }
 
 
-# [explain] Wazuh stores the alert text as separate words, so "ends with /nc" can never match.
-# [explain] This turns any path into just its last word ("nc"), which the text search can find.
 class _BasenameToken(ValueTransformation):
     """Reduce a path-like Sigma value to its basename token.
 
@@ -105,7 +98,6 @@ class _BasenameToken(ValueTransformation):
         return SigmaString(base) if base else None
 
 
-# [explain] The Wazuh translation: first rename the fields, then reduce paths to their last word.
 orion_wazuh_pipeline = ProcessingPipeline(
     name="orion_wazuh_lucene",
     priority=20,
@@ -123,13 +115,11 @@ orion_wazuh_pipeline = ProcessingPipeline(
 )
 
 
-# [explain] Raised when a rule cannot be parsed or converted.
 class SigmaConversionError(Exception):
     """Raised when a Sigma rule fails to parse or convert."""
     pass
 
 
-# [explain] Rule to KQL (Microsoft Sentinel). Sentinel is not connected anymore, the code stays for later.
 def convert_to_kql(rule_yaml: str) -> str:
     """Convert a Sigma rule to KQL for Sentinel, using the official
     ASIM pipeline. Returns the first generated query.
@@ -144,7 +134,6 @@ def convert_to_kql(rule_yaml: str) -> str:
         raise SigmaConversionError(f"KQL conversion failed: {e}") from e
 
 
-# [explain] Rule to EQL, Elastic's event query language.
 def convert_to_eql(rule_yaml: str) -> str:
     """Convert a Sigma rule to EQL for Elastic, using ORION's
     product-agnostic ECS field mapper. Returns the first generated query.
@@ -158,7 +147,6 @@ def convert_to_eql(rule_yaml: str) -> str:
         raise SigmaConversionError(f"EQL conversion failed: {e}") from e
 
 
-# [explain] Rule to Lucene, the text-query language used on the Wazuh indexer.
 def convert_to_lucene(rule_yaml: str) -> str:
     """Convert a Sigma rule to a Lucene query_string for the Wazuh indexer.
     Returns the first generated query.
@@ -172,7 +160,6 @@ def convert_to_lucene(rule_yaml: str) -> str:
         raise SigmaConversionError(f"Lucene conversion failed: {e}") from e
 
 
-# [explain] Lists every field a rule talks about (to compare with what a SIEM can express).
 def rule_fields(rule_yaml: str) -> set:
     """Field names used by a rule's detections (unfielded keyword searches excluded)."""
     def walk(node):
@@ -189,7 +176,6 @@ def rule_fields(rule_yaml: str) -> set:
     return fields
 
 
-# [explain] The fields of the rule that this SIEM has no equivalent for. If the list is not empty, the rule is NOT runnable there.
 def unmapped_fields(rule_yaml: str, siem_type: str) -> list:
     """Sigma fields the rule uses that this SIEM profile cannot express.
 
@@ -206,7 +192,6 @@ def unmapped_fields(rule_yaml: str, siem_type: str) -> list:
         return []
 
 
-# [explain] Converts one rule to every language at once. A failure in one language does not stop the others.
 def convert_sigma_rule(rule_yaml: str) -> dict:
     """Convert a Sigma rule to both KQL and EQL.
 

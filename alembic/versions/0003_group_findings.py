@@ -8,7 +8,6 @@ branch_labels = None
 depends_on = None
 
 
-# [explain] Adds the columns that let many identical events become one finding: fingerprint, how many times, first and last time.
 def upgrade():
     op.add_column("hunt_results", sa.Column("fingerprint", sa.Text(), nullable=True))
     op.add_column("hunt_results", sa.Column("occurrence_count", sa.Integer(), server_default="1", nullable=False))
@@ -17,7 +16,6 @@ def upgrade():
     op.create_index("idx_results_fingerprint", "hunt_results", ["fingerprint"], unique=False)
 
 
-# [explain] Removes those columns.
 def downgrade():
     op.drop_index("idx_results_fingerprint", table_name="hunt_results")
     op.drop_column("hunt_results", "last_seen")

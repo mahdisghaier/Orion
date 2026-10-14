@@ -15,7 +15,6 @@ def c(siem, host="lab-host", process="nc", start=0, end=None):
     return Candidate(siem, host, process, T0 + timedelta(seconds=start), T0 + timedelta(seconds=end))
 
 
-# [explain] Checks when two SIEMs' findings are linked: same host and process, close in time, never the same SIEM twice, never guessed.
 class Correlation(unittest.TestCase):
     def test_same_host_process_overlapping_in_two_siems(self):
         elastic = c("elastic", start=0, end=1800)             # sampled for 30 minutes

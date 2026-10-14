@@ -17,7 +17,6 @@ from app.core.security import hash_password
 from app.models import User, Base
 
 
-# [explain] The demo accounts, one per role (admin, soc_l1, soc_l2, soc_l3). They are only for local testing.
 SEED_USERS = [
     {
         "email": "admin@orion.local",
@@ -46,7 +45,6 @@ SEED_USERS = [
 ]
 
 
-# [explain] Creates the demo accounts above, skipping any that already exist, so it is safe to run twice.
 async def seed():
     async with async_session() as db:
         for user_data in SEED_USERS:

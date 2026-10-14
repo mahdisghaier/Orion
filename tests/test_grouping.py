@@ -25,7 +25,6 @@ def pairs(events):
     return [(e, extract_ecs_fields(e)) for e in events]
 
 
-# [explain] Many identical events become one finding; different behaviour stays separate.
 class Grouping(unittest.TestCase):
     def test_samples_of_one_process_become_one_finding(self):
         # 61 snapshots, 30 s apart, same PID

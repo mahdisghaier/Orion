@@ -43,7 +43,6 @@
         </div>
       </div>
 
-      <!-- [explain] The buttons that drive the loop. "Nothing runs until you approve a step" is the rule of the whole screen. -->
       <!-- Actions -->
       <div v-if="inv.status === 'open'" class="bg-white border rounded-lg p-6">
         <div class="flex flex-wrap items-center gap-3">
@@ -75,7 +74,6 @@
         <p v-if="actionError" class="mt-3 text-sm text-red-600">{{ actionError }}</p>
       </div>
 
-      <!-- [explain] Every step in order: why it was suggested, which SIEMs can run it, the decision, and the outcome. -->
       <!-- Timeline -->
       <div>
         <h2 class="text-lg font-bold mb-3">Steps</h2>
@@ -160,7 +158,6 @@
         </div>
       </div>
 
-      <!-- [explain] Only L2+ analysts can close the investigation. -->
       <!-- Conclude -->
       <div v-if="inv.status === 'open' && auth.isL2Plus" class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-3">Conclude</h2>
@@ -213,7 +210,6 @@ const addError = ref('')
 const verdict = ref('')
 const conclusion = ref('')
 
-// [explain] Fetch the notebook with all its steps.
 async function load() {
   loading.value = true
   loadError.value = ''
@@ -226,7 +222,6 @@ async function load() {
   }
 }
 
-// [explain] "What should we look at next?" The server answers with suggestions (rule-based and AI). Nothing is run.
 async function propose() {
   proposing.value = true
   actionError.value = ''
@@ -242,7 +237,6 @@ async function propose() {
   }
 }
 
-// [explain] Download the PDF report or the notebook for this investigation.
 async function exportAs(kind: 'report' | 'notebook') {
   exporting.value = true
   exportError.value = ''
@@ -255,7 +249,6 @@ async function exportAs(kind: 'report' | 'notebook') {
   }
 }
 
-// [explain] The analyst writes her own rule step; the server refuses it with reasons if it cannot run.
 async function addStep() {
   addError.value = ''
   try {
@@ -269,7 +262,6 @@ async function addStep() {
   }
 }
 
-// [explain] Approve (which also runs the step) or reject it, with an optional comment kept in the record.
 async function decide(step: InvestigationStep, action: 'approve' | 'reject') {
   busy[step.id] = true
   actionError.value = ''
@@ -284,7 +276,6 @@ async function decide(step: InvestigationStep, action: 'approve' | 'reject') {
   }
 }
 
-// [explain] Close the notebook with a verdict and a conclusion.
 async function conclude() {
   actionError.value = ''
   try {
@@ -294,7 +285,6 @@ async function conclude() {
   }
 }
 
-// [explain] Who suggested the step: the AI, the built-in rules, or the analyst.
 function proposer(p: string): string {
   return p === 'ai' ? 'proposed by AI' : p === 'system' ? 'rule-based suggestion' : 'added by you'
 }

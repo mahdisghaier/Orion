@@ -4,8 +4,6 @@ from typing_extensions import TypedDict
 from operator import add
 
 
-# [explain] The agent's notebook page. Every step of the flowchart reads from it and writes to it:
-# [explain] what the analyst asked, the rule it wrote, the hunt that ran, the findings, the explanation.
 class ChatState(TypedDict):
     """State that flows through the LangGraph agent.
     

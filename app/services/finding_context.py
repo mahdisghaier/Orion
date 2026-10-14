@@ -13,13 +13,11 @@ from app.models import HuntResult, SIEMConnection
 from app.services.connectors.factory import ConnectorError, get_connector
 from app.services.ecs import extract_ecs_fields, get_nested
 
-# [explain] The only three questions allowed: same host, same process, same user. Nothing else can be asked.
 PIVOT_FIELD = {"host": "host_name", "process": "process_name", "user": "user_name"}
 MAX_WINDOW_MINUTES = 120
 MAX_EVENTS = 200
 
 
-# [explain] A pivot that cannot be done, with the right web status attached (404, 409, 422, 501, 502).
 class ContextError(Exception):
     """A pivot that cannot be performed; carries the HTTP status the API should answer with."""
 
@@ -29,8 +27,6 @@ class ContextError(Exception):
         self.detail = detail
 
 
-# [explain] "What else happened around this finding?" Asks the finding's own SIEM for events near it in time.
-# [explain] Window and number of events are capped; the SIEM query is built by the connector from fixed parts.
 async def fetch_finding_context(db: AsyncSession, finding: HuntResult, pivot: str,
                                 window: int, limit: int) -> dict:
     """Returns {pivot, entity, siem_type, connection_name, window_minutes, time_from, time_to, events: [...]}."""

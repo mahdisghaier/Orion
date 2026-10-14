@@ -31,7 +31,6 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-# [explain] Migrations without a database connection: it only writes the SQL it would run.
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode — generates SQL without DB connection."""
     url = config.get_main_option("sqlalchemy.url")
@@ -52,7 +51,6 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-# [explain] Connects to the database and runs the migrations. This is the path used day to day.
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async engine."""
     connectable = async_engine_from_config(
@@ -67,7 +65,6 @@ async def run_async_migrations() -> None:
     await connectable.dispose()
 
 
-# [explain] Starts the async runner above.
 def run_migrations_online() -> None:
     """Entry point — runs async migrations."""
     asyncio.run(run_async_migrations())

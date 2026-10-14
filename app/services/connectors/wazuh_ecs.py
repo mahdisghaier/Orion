@@ -24,7 +24,6 @@ import re
 from typing import Iterable, List, Optional
 
 # "tcp 127.0.0.1:4444 0.0.0.0:* 13663/nc"   (lines rewritten by Wazuh's sed)
-# [explain] Recognises one line of the listening-ports table after Wazuh reformatted it, e.g. "tcp 127.0.0.1:4444 0.0.0.0:* 13663/nc".
 _NETSTAT_SED = re.compile(
     r"^(?P<proto>tcp6?|udp6?)\s+(?P<local>\S+)\s+\S+\s+(?:(?P<pid>\d+)/(?P<name>\S+))?\s*$"
 )
@@ -37,7 +36,6 @@ _FULL_LOG_TERMS = re.compile(r"full_log:\(?([^()]+?)\)?(?:\s+AND\s|$|\))")
 NETSTAT_RULE_ID = "533"
 
 
-# [explain] Read a value deep inside an alert with a dotted path, without crashing when a step is missing.
 def _get(d: dict, path: str, default=None):
     cur = d
     for key in path.split("."):
@@ -51,7 +49,6 @@ def _basename(path: str) -> str:
     return path.replace("\\", "/").rstrip("/").split("/")[-1]
 
 
-# [explain] Fields every Wazuh alert has: time, host, rule, severity, MITRE tags. The original alert is kept inside the event too.
 def _base_event(source: dict, host_aliases: Optional[dict]) -> dict:
     agent = _get(source, "agent.name")
     host = (host_aliases or {}).get(agent) or (agent.lower() if agent else None)
@@ -85,7 +82,6 @@ def _base_event(source: dict, host_aliases: Optional[dict]) -> dict:
     return event
 
 
-# [explain] Extra details for alerts about commands or logins (sudo, PAM...): who, what command, from where.
 def _apply_data_fields(event: dict, source: dict) -> None:
     """Fields from decoded log data (sudo, PAM, sshd, ...). Only what is present is mapped."""
     data = source.get("data")
@@ -123,7 +119,6 @@ def _apply_data_fields(event: dict, source: dict) -> None:
         event["event"]["action"] = _get(source, "rule.description")
 
 
-# [explain] File-integrity alerts: which file changed and how (added, modified, deleted).
 def _apply_syscheck(event: dict, source: dict) -> bool:
     """File-integrity alerts (syscheck): which file changed and how. True when the alert is one."""
     sc = source.get("syscheck")
@@ -144,7 +139,6 @@ def _apply_syscheck(event: dict, source: dict) -> bool:
     return True
 
 
-# [explain] Reads the whole listening-ports table of a rule 533 alert into a list of listeners.
 def parse_netstat_lines(text: Optional[str]) -> List[dict]:
     """Parse the listening-port table of a rule 533 alert into listener dicts."""
     listeners = []
@@ -168,8 +162,6 @@ def parse_netstat_lines(text: Optional[str]) -> List[dict]:
     return listeners
 
 
-# [explain] Rule 533 sends the whole table every time. The news is only the lines that differ from the previous table:
-# [explain] those become one event each ("port opened by nc", "port closed").
 def _netstat_events(source: dict, base: dict, name_filter: Optional[set]) -> List[dict]:
     current = parse_netstat_lines(source.get("full_log"))
     previous = parse_netstat_lines(source.get("previous_log"))
@@ -194,7 +186,6 @@ def _netstat_events(source: dict, base: dict, name_filter: Optional[set]) -> Lis
     return events
 
 
-# [explain] From the search text, find the process names the rule asked for, to drop unrelated changes in the same alert.
 def query_process_names(query: str) -> Optional[set]:
     """Process-name terms of the full_log clause in a Wazuh Lucene query, lowercased.
 
@@ -210,7 +201,6 @@ def query_process_names(query: str) -> Optional[set]:
     return terms or None
 
 
-# [explain] The front door of this file: one Wazuh alert in, one or more events in the common shape out.
 def wazuh_to_ecs_events(source: dict, host_aliases: Optional[dict] = None,
                         name_filter: Optional[Iterable[str]] = None) -> List[dict]:
     """One Wazuh alert -> list of ECS-shaped events (usually exactly one)."""

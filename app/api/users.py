@@ -20,8 +20,6 @@ from app.schemas import UserCreate, UserResponse, UserUpdate
 router = APIRouter()
 
 
-# [explain] Admin creates an account. We refuse a second account with the same email.
-# [explain] The password is scrambled (hashed) before it touches the database.
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     payload: UserCreate,
@@ -46,7 +44,6 @@ async def create_user(
     return user
 
 
-# [explain] Admin sees all accounts, newest first.
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
     current_user: User = Depends(require_admin),
@@ -57,7 +54,6 @@ async def list_users(
     return result.scalars().all()
 
 
-# [explain] Admin looks at one account.
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
@@ -72,8 +68,6 @@ async def get_user(
     return user
 
 
-# [explain] Admin changes a name, a role or switches an account on/off.
-# [explain] Only the fields that were actually sent are changed (exclude_unset).
 @router.patch("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: UUID,

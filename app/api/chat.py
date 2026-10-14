@@ -19,18 +19,14 @@ from app.services.agent.nodes import run_hunt, explain_findings
 router = APIRouter()
 
 
-# [explain] Class names of the errors that mean "the AI service cannot answer right now" (quota, network, wrong key...).
 _AI_DOWN = {"ResourceExhausted", "ServiceUnavailable", "DeadlineExceeded", "Unauthenticated", "PermissionDenied",
             "LLMUnavailable", "RetryError", "InvalidArgument"}
 
 
-# [explain] True when an error means the AI service itself is down (not a bug of ours), so we can answer "AI unavailable" instead of a scary crash.
 def _ai_unavailable(e: Exception) -> bool:
     return type(e).__name__ in _AI_DOWN
 
 
-# [explain] Saves every AI call in llm_audit, optionally linked to the hunt it explains.
-# [explain] The caller commits, together with the audit-diary line.
 def _save_audits(db: AsyncSession, user: User, entries: list, hunt_id: Optional[UUID] = None) -> None:
     for audit in entries:
         db.add(LLMAudit(
@@ -72,8 +68,6 @@ class ConfirmRequest(BaseModel):
     chat_history: List[Dict[str, str]] = []
 
 
-# [explain] The analyst talks to the AI. The AI understands the request and writes a Sigma rule,
-# [explain] then it STOPS and waits: nothing is searched until the analyst says yes (see confirm_hunt).
 @router.post("/message", response_model=ChatMessageResponse)
 async def send_message(
     request: ChatMessageRequest,
@@ -102,11 +96,9 @@ async def send_message(
             "error": None,
         }
         
-        # [explain] The agent is a small flowchart (understand, write rule). The graph runs it from start to the waiting point.
         result = await agent_graph.ainvoke(state)
         
         # Persist LLM audit entries
-        # [explain] Every question we asked the AI and every answer is saved in llm_audit, so a lead can check later what it said.
         _save_audits(db, current_user, result.get("llm_audit_entries", []))
 
         await log_action(
@@ -139,7 +131,6 @@ async def send_message(
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
-# [explain] The analyst's answer to "shall I run this?". Yes = run the hunt and let the AI explain the results.
 @router.post("/confirm", response_model=ChatMessageResponse)
 async def confirm_hunt(
     request: ConfirmRequest,
@@ -194,12 +185,10 @@ async def confirm_hunt(
         }
         
         # Run the hunt node directly (NOT the full graph)
-        # [explain] Skips the first two steps of the flowchart: the rule was already written and approved.
         state = await run_hunt(state)
         
         # If hunt succeeded, explain the findings
         if state.get("hunt_status") == "completed" and state.get("findings"):
-            # [explain] The hunt already worked. If only the AI explanation fails, keep the findings and say so.
             try:
                 state = await explain_findings(state)
             except Exception as e:
@@ -207,7 +196,6 @@ async def confirm_hunt(
                                         "The findings above are complete; open one to see why it was ranked where it is.")
                 state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": state["explanation"]}]
 
-        # [explain] Save the explanation's AI call (it used to be lost here), linked to the hunt it explains.
         _save_audits(db, current_user, state.get("llm_audit_entries", []),
                      UUID(state["hunt_id"]) if state.get("hunt_id") else None)
         

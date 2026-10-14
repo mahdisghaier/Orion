@@ -22,7 +22,6 @@ need_pass() {
   [ -n "$WZ_PASS" ] || { echo "  (set WAZUH_INDEXER_PASS to query the Wazuh indexer)"; return 1; }
 }
 
-# [explain] Three views: the summary, the raw Elastic event for the netcat test, or the raw Wazuh alerts.
 case "${1:-summary}" in
 summary)
   echo "== Elastic =="

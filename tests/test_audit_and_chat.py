@@ -23,7 +23,6 @@ class FakeSession:
         self.commits += 1
 
 
-# [explain] The audit line must NOT commit by itself: the caller commits, so line and action are saved together.
 class AuditJoinsTheTransaction(unittest.IsolatedAsyncioTestCase):
     async def test_log_action_adds_but_does_not_commit(self):
         db = FakeSession()
@@ -40,7 +39,6 @@ class AuditJoinsTheTransaction(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(db.added[0].user_agent), 500)          # bounded
 
 
-# [explain] Chat helpers: saving AI calls (linked to a hunt) and recognising "the AI is down" errors.
 class ChatHelpers(unittest.TestCase):
     ENTRY = {"context": "explain_findings", "prompt": "p" * 9000, "system_prompt": "s" * 2000, "response": "r" * 20000,
              "model": "m", "provider": "google", "latency_ms": 12}

@@ -14,7 +14,6 @@ from typing import Any, Dict, Iterable, List, Tuple
 from app.services.ecs import get_nested
 
 
-# [explain] One finding made of many identical events: the newest one as the example, how many there were, first and last time.
 @dataclass
 class EventGroup:
     fingerprint: str
@@ -25,8 +24,6 @@ class EventGroup:
     last_seen: datetime
 
 
-# [explain] A name tag for a BEHAVIOUR: host + process + command + user + action + addresses.
-# [explain] The process number and the time are left out on purpose: they change every time but the behaviour is the same.
 def fingerprint(siem_type: str, event: dict, fields: dict) -> str:
     parts = [
         siem_type,
@@ -47,7 +44,6 @@ def fingerprint(siem_type: str, event: dict, fields: dict) -> str:
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
-# [explain] Put events with the same name tag in the same pile, and count them. 61 identical photos become "seen 61 times".
 def group_events(siem_type: str, items: Iterable[Tuple[dict, dict]]) -> List[EventGroup]:
     """items: (event, extract_ecs_fields(event)) pairs, any order. Returns groups, newest first."""
     groups: Dict[str, EventGroup] = {}

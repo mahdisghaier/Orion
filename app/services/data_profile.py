@@ -17,7 +17,6 @@ SIEM_FIELD_MAPS: Dict[str, dict] = {
 }
 
 # Fields profiled beyond those a Sigma mapping targets (context for analysts and the AI agent)
-# [explain] A few extra details worth measuring besides the ones the rule translation needs.
 _EXTRA_FIELDS = {
     "elastic": ["process.name", "event.action", "source.ip", "destination.ip"],
     "wazuh": ["data.dstuser", "rule.id", "rule.level", "rule.mitre.id"],
@@ -36,7 +35,6 @@ def _targets(sigma_field: str, siem_type: str) -> List[str]:
     return list(target) if isinstance(target, (list, tuple)) else [target]
 
 
-# [explain] Which details to measure for a SIEM: every field a rule can be translated into, so the check can never drift from the translation.
 def profile_fields(siem_type: str) -> List[str]:
     """Fields to profile: every field a Sigma mapping targets, plus a few extras. Stays in sync with the maps."""
     fields = {t for sf in SIEM_FIELD_MAPS.get(siem_type, {}) for t in _targets(sf, siem_type)}
@@ -44,7 +42,6 @@ def profile_fields(siem_type: str) -> List[str]:
     return sorted(fields)
 
 
-# [explain] Packs the raw counts into the check-up document: how many events, first/last time, and what percent carry each field.
 def build_profile(siem_type: str, window_days: int, total_docs: int, recent_docs: int,
                   earliest: Optional[str], latest: Optional[str],
                   field_counts: Dict[str, int], top: Iterable[tuple]) -> dict:
@@ -65,8 +62,6 @@ def build_profile(siem_type: str, window_days: int, total_docs: int, recent_docs
     }
 
 
-# [explain] A blind spot = a detail the rule needs but NO recent event carries.
-# [explain] A SIEM with no recent events at all (an archive) is never judged, it may still hold older data.
 def blind_spots(sigma_fields: Iterable[str], siem_type: str, profile: Optional[dict]) -> List[str]:
     """Rule fields whose SIEM field has NO events in the profiled window, e.g. "ParentImage -> process.parent.executable".
 

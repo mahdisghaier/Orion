@@ -23,7 +23,6 @@ def patch_httpx(monkeypatch_target, handler):
     return real
 
 
-# [explain] The Elastic look-around query is a fixed template and never builds query text from user input.
 class ElasticContext(unittest.IsolatedAsyncioTestCase):
     async def run_pivot(self, kind):
         seen = {}
@@ -81,7 +80,6 @@ class ElasticContext(unittest.IsolatedAsyncioTestCase):
         self.assertIn({"term": {"host.name": 'x" or 1==1 //'}}, seen["body"]["query"]["bool"]["filter"])
 
 
-# [explain] The same for Wazuh, including agent aliases.
 class WazuhContext(unittest.IsolatedAsyncioTestCase):
     def connector(self, handler, aliases=None):
         c = WazuhConnector("https://wz:9200", "u", "p", host_aliases=aliases)

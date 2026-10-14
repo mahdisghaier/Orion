@@ -20,9 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AuditLog
 
 
-# [explain] Writes one line in the diary: who did what, to which thing, when, and from which address.
-# [explain] The line joins the caller's database transaction and is saved by the caller's commit, so the diary
-# [explain] and the action it describes are saved together or not at all (no diary line for something that failed).
 async def log_action(
     db: AsyncSession,
     *,

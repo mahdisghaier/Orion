@@ -122,7 +122,6 @@ const state = reactive<Record<string, RowState>>({})
 const loading = ref(true)
 const loadError = ref('')
 
-// [explain] Fetch the SIEMs and, for each, its latest check-up (if one exists).
 async function load() {
   loading.value = true
   loadError.value = ''
@@ -139,7 +138,6 @@ async function load() {
   }
 }
 
-// [explain] "Can ORION reach and log in?"
 async function runTest(id: string) {
   const s = state[id]
   s.busy = true
@@ -153,7 +151,6 @@ async function runTest(id: string) {
   }
 }
 
-// [explain] Measure the SIEM again: volume, freshness, which details are filled in.
 async function runProfile(id: string) {
   const s = state[id]
   s.busy = true
@@ -178,7 +175,6 @@ function formatTime(ts: string): string {
 }
 
 // A source that stopped sending is a blind spot too: flag a latest event older than 1 hour
-// [explain] A SIEM whose newest event is over an hour old is flagged: the agent may have stopped sending, which is a blind spot too.
 function freshness(latest: string | null): { label: string; stale: boolean } {
   if (!latest) return { label: 'no events', stale: true }
   const minutes = (Date.now() - new Date(latest).getTime()) / 60000

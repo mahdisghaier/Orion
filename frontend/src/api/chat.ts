@@ -1,6 +1,5 @@
 import api from './client'
 
-// [explain] The shapes of the data exchanged with /api/chat (what the screen sends and receives).
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
@@ -30,7 +29,6 @@ export interface ChatResponse {
   error: string | null
 }
 
-// [explain] Send what the analyst typed. The AI answers with a proposed rule and waits for approval.
 export async function sendMessage(
   message: string,
   siemTargets: string[],
@@ -44,7 +42,6 @@ export async function sendMessage(
   return data
 }
 
-// [explain] Tell the AI "yes, run it" (or no).
 export async function confirmHunt(
   approved: boolean,
   sigmaRule: string,
