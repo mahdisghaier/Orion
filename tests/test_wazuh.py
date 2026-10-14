@@ -67,6 +67,41 @@ SUDO_ALERT = {
 }
 
 
+SYSCHECK_ALERT = {
+    "@timestamp": "2026-01-01T10:10:00.000Z",
+    "id": "3.3",
+    "agent": {"id": "001", "name": "Lab-Host"},
+    "rule": {"id": "554", "level": 5, "description": "File added to the system.", "groups": ["ossec", "syscheck"]},
+    "decoder": {"name": "syscheck_new_entry"},
+    "syscheck": {"path": "/home/analyst/watched/report.txt", "mode": "realtime", "event": "added",
+                 "size_after": "12", "sha256_after": "ab" * 32},
+    "full_log": "File '/home/analyst/watched/report.txt' added",
+}
+
+
+class SyscheckAlerts(unittest.TestCase):
+    def test_file_alert_becomes_a_file_event(self):
+        (e,) = wazuh_to_ecs_events(SYSCHECK_ALERT)
+        self.assertEqual(e["file"]["path"], "/home/analyst/watched/report.txt")
+        self.assertEqual(e["file"]["hash"]["sha256"], "ab" * 32)
+        self.assertEqual(e["event"]["action"], "file-added")
+        self.assertEqual(e["event"]["category"], ["file"])
+        self.assertIn("/home/analyst/watched/report.txt", e["message"])        # tells two file alerts apart
+
+    def test_target_filename_rule_converts_for_wazuh_and_elastic(self):
+        rule = """title: file
+logsource: {product: linux, category: file_event}
+detection:
+  selection:
+    TargetFilename|contains: 'watched/report'
+  condition: selection
+"""
+        result = convert_sigma_rule(rule)
+        self.assertIn("syscheck.path:*watched\\/report*", result["lucene"])
+        self.assertIn("file.path", result["eql"])
+        self.assertEqual(unmapped_fields(rule, "wazuh"), [])
+
+
 class SigmaToLucene(unittest.TestCase):
     def test_image_becomes_basename_tokens(self):
         # pySigma's default "*\/nc" matches nothing on the analysed full_log text field

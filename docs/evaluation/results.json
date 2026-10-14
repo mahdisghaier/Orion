@@ -1,0 +1,271 @@
+{
+ "meta": {
+  "date": "2026-10-14 21:06",
+  "commit": "d0eb696",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "python": "3.12.13",
+  "run_id": "205823"
+ },
+ "techniques": [
+  {
+   "key": "T1046",
+   "name": "Network service discovery: a netcat listener",
+   "tactic": "discovery",
+   "per_siem": {
+    "Local Wazuh (wsl-ubuntu)": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 170
+      },
+      "short": {
+       "instances": 30,
+       "detected": 0,
+       "latency_s_median": null
+      }
+     },
+     "raw_events": 2,
+     "noise_events": 0,
+     "behaviours": 2,
+     "noise_behaviours": 0
+    },
+    "Local Elastic (Metricbeat lab)": {
+     "type": "elastic",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 47
+      },
+      "short": {
+       "instances": 30,
+       "detected": 0,
+       "latency_s_median": null
+      }
+     },
+     "raw_events": 15,
+     "noise_events": 0,
+     "behaviours": 1,
+     "noise_behaviours": 0
+    }
+   },
+   "ranking": {
+    "measured": true,
+    "behaviours": 3,
+    "true_positives": 3,
+    "p_at_1": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    },
+    "p_at_3": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    }
+   }
+  },
+  {
+   "key": "T1059.004",
+   "name": "Unix shell command execution",
+   "tactic": "execution",
+   "per_siem": {
+    "Local Wazuh (wsl-ubuntu)": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 0,
+       "latency_s_median": null
+      },
+      "short": {
+       "instances": 30,
+       "detected": 0,
+       "latency_s_median": null
+      }
+     },
+     "raw_events": 0,
+     "noise_events": 0,
+     "behaviours": 0,
+     "noise_behaviours": 0
+    },
+    "Local Elastic (Metricbeat lab)": {
+     "type": "elastic",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 47
+      },
+      "short": {
+       "instances": 30,
+       "detected": 0,
+       "latency_s_median": null
+      }
+     },
+     "raw_events": 189,
+     "noise_events": 186,
+     "behaviours": 20,
+     "noise_behaviours": 19
+    }
+   },
+   "ranking": {
+    "measured": true,
+    "behaviours": 20,
+    "true_positives": 1,
+    "p_at_1": {
+     "by_time": 0.0,
+     "by_priority": 0.0
+    },
+    "p_at_3": {
+     "by_time": 0.0,
+     "by_priority": 0.0
+    }
+   }
+  },
+  {
+   "key": "T1105",
+   "name": "Ingress tool transfer with curl",
+   "tactic": "command_and_control",
+   "per_siem": {
+    "Local Wazuh (wsl-ubuntu)": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 0,
+       "latency_s_median": null
+      },
+      "short": {
+       "instances": 30,
+       "detected": 0,
+       "latency_s_median": null
+      }
+     },
+     "raw_events": 0,
+     "noise_events": 0,
+     "behaviours": 0,
+     "noise_behaviours": 0
+    },
+    "Local Elastic (Metricbeat lab)": {
+     "type": "elastic",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 47
+      },
+      "short": {
+       "instances": 30,
+       "detected": 3,
+       "latency_s_median": 26
+      }
+     },
+     "raw_events": 7,
+     "noise_events": 1,
+     "behaviours": 5,
+     "noise_behaviours": 1
+    }
+   },
+   "ranking": {
+    "measured": true,
+    "behaviours": 5,
+    "true_positives": 4,
+    "p_at_1": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    },
+    "p_at_3": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    }
+   }
+  },
+  {
+   "key": "T1070.003",
+   "name": "Clear command history",
+   "tactic": "defense_evasion",
+   "per_siem": {
+    "Local Wazuh (wsl-ubuntu)": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 0,
+       "latency_s_median": null
+      },
+      "short": {
+       "instances": 30,
+       "detected": 0,
+       "latency_s_median": null
+      }
+     },
+     "raw_events": 0,
+     "noise_events": 0,
+     "behaviours": 0,
+     "noise_behaviours": 0
+    },
+    "Local Elastic (Metricbeat lab)": {
+     "type": "elastic",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 47
+      },
+      "short": {
+       "instances": 30,
+       "detected": 3,
+       "latency_s_median": 26
+      }
+     },
+     "raw_events": 58,
+     "noise_events": 1,
+     "behaviours": 9,
+     "noise_behaviours": 1
+    }
+   },
+   "ranking": {
+    "measured": true,
+    "behaviours": 9,
+    "true_positives": 8,
+    "p_at_1": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    },
+    "p_at_3": {
+     "by_time": 1.0,
+     "by_priority": 1.0
+    }
+   }
+  }
+ ],
+ "sources": [
+  {
+   "name": "Local Wazuh (wsl-ubuntu)",
+   "type": "wazuh",
+   "recent_events": 83
+  },
+  {
+   "name": "Local Elastic (Metricbeat lab)",
+   "type": "elastic",
+   "recent_events": 63204
+  }
+ ]
+}

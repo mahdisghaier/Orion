@@ -112,7 +112,7 @@
               </div>
             </td>
             <td class="px-4 py-3">
-              <div class="font-mono text-xs">{{ finding.process_name || '—' }}</div>
+              <div class="font-mono text-xs">{{ finding.process_name || finding.action || '—' }}</div>
               <div v-if="finding.process_command_line" class="text-xs text-gray-500 mt-1 truncate max-w-xs">{{ finding.process_command_line }}</div>
             </td>
             <td class="px-4 py-3 text-gray-600">{{ finding.host_name || '—' }}</td>

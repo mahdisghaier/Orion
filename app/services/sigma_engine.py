@@ -27,6 +27,7 @@ _ECS_FIELD_MAPPING = {
     "ParentCommandLine": "process.parent.command_line",
     "User": "user.name",
     "Computer": "host.name",
+    "TargetFilename": "file.path",
     "ProcessId": "process.pid",
     "ParentProcessId": "process.parent.pid",
 }
@@ -60,12 +61,14 @@ orion_ecs_pipeline = ProcessingPipeline(
 #   CommandLine  -> data.command  keyword; present on sudo alerts (rule 5403)
 #   User         -> data.srcuser  keyword; sudo / PAM alerts
 #   Computer     -> agent.name    keyword
+#   TargetFilename -> syscheck.path  keyword; file-integrity alerts (rules 550/553/554)
 # ─────────────────────────────────────────────────────────────────
 _WAZUH_FIELD_MAPPING = {
     "Image": "full_log",
     "CommandLine": "data.command",
     "User": "data.srcuser",
     "Computer": "agent.name",
+    "TargetFilename": "syscheck.path",
     "SourceIp": "data.srcip",
     "DestinationIp": "data.dstip",
 }

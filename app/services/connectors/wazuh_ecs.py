@@ -12,6 +12,7 @@ The mapping is derived from real alerts collected in the lab:
   sudo / PAM (5403, ...)  data.srcuser -> user.name, data.dstuser -> user.target.name,
                           data.command -> process.command_line (+ name / executable),
                           data.pwd -> process.working_directory
+  syscheck (550/553/554)  syscheck.path -> file.path, syscheck.event -> event.action ("file-modified")
   netstat (rule 533)      the alert carries the WHOLE listening-port table in full_log
                           and the previous table in previous_log. The new/closed
                           listeners are the lines that differ; each becomes its own
@@ -118,6 +119,26 @@ def _apply_data_fields(event: dict, source: dict) -> None:
         event["event"]["action"] = _get(source, "rule.description")
 
 
+def _apply_syscheck(event: dict, source: dict) -> bool:
+    """File-integrity alerts (syscheck): which file changed and how. True when the alert is one."""
+    sc = source.get("syscheck")
+    if not isinstance(sc, dict) or not sc.get("path"):
+        return False
+    action = f"file-{sc.get('event', 'changed')}"
+    file_info = {"path": sc["path"]}
+    if sc.get("size_after") not in (None, ""):
+        file_info["size"] = sc["size_after"]
+    if sc.get("sha256_after"):
+        file_info["hash"] = {"sha256": sc["sha256_after"]}
+    event["file"] = file_info
+    event["event"]["action"] = action
+    event["event"]["category"] = ["file"]
+    event["event"]["dataset"] = "wazuh.syscheck"
+    # the path is what tells two file alerts apart (their rule description is identical)
+    event["message"] = f"{_get(source, 'rule.description')}: {sc['path']}"
+    return True
+
+
 def parse_netstat_lines(text: Optional[str]) -> List[dict]:
     """Parse the listening-port table of a rule 533 alert into listener dicts."""
     listeners = []
@@ -186,5 +207,7 @@ def wazuh_to_ecs_events(source: dict, host_aliases: Optional[dict] = None,
     base = _base_event(source, host_aliases)
     if str(_get(source, "rule.id")) == NETSTAT_RULE_ID:
         return _netstat_events(source, base, set(name_filter) if name_filter else None)
+    if _apply_syscheck(base, source):
+        return [base]
     _apply_data_fields(base, source)
     return [base]
