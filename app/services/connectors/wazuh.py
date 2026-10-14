@@ -4,6 +4,7 @@ The Wazuh indexer is OpenSearch, so there is no _eql endpoint: the Sigma rule is
 converted to a Lucene query_string and sent to POST /<index>/_search. Hits are
 Wazuh alerts, which are mapped to ECS-shaped events by wazuh_ecs.
 """
+from datetime import datetime
 from typing import List, Optional
 
 import httpx
@@ -113,3 +114,55 @@ class WazuhConnector(BaseSIEMConnector):
                 return response.status_code == 200 and response.json().get("status") != "red"
         except (httpx.RequestError, ValueError):
             return False
+
+    def _agent_names(self, host: Optional[str]) -> List[str]:
+        """Wazuh agent names that stand for a host name: the name itself plus any aliased to it."""
+        if not host:
+            return []
+        names = [host] + [agent for agent, alias in self.host_aliases.items() if alias == host]
+        return list(dict.fromkeys(names))
+
+    async def fetch_context(
+        self,
+        kind: str,
+        entity: dict,
+        start: datetime,
+        end: datetime,
+        max_results: int = 100,
+    ) -> List[dict]:
+        """Alerts around a finding: same host (agent), same process name in the alert text, or same user."""
+        host, process, user = entity.get("host"), entity.get("process_name"), entity.get("user")
+        filters = [{"range": {"@timestamp": {"gte": start.isoformat(), "lte": end.isoformat()}}}]
+
+        if host:
+            filters.append({"bool": {"minimum_should_match": 1, "should": [
+                {"term": {"agent.name": {"value": name, "case_insensitive": True}}}
+                for name in self._agent_names(host)
+            ]}})
+        if kind == "process":
+            filters.append({"match": {"full_log": process}})      # full_log is tokenised text
+        elif kind == "user":
+            filters.append({"bool": {"minimum_should_match": 1, "should": [
+                {"term": {"data.srcuser": user}}, {"term": {"data.dstuser": user}}]}})
+        elif kind != "host":
+            raise ValueError(f"unknown pivot kind: {kind}")
+
+        body = {
+            "size": min(max_results, 200),
+            "sort": [{"@timestamp": "desc"}],
+            "query": {"bool": {"filter": filters}},
+        }
+        try:
+            async with self._client(30.0) as client:
+                response = await client.post(f"{self.url}/{self.index_pattern}/_search", json=body)
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise WazuhConnectionError(
+                f"Wazuh context query failed ({e.response.status_code}): {e.response.text[:300]}") from e
+        except httpx.RequestError as e:
+            raise WazuhConnectionError(f"Wazuh connection failed: {type(e).__name__}: {e}") from e
+
+        events: List[dict] = []
+        for hit in response.json().get("hits", {}).get("hits", []):
+            events.extend(wazuh_to_ecs_events(hit.get("_source", {}), self.host_aliases))
+        return events[:max_results]

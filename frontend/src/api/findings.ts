@@ -78,3 +78,37 @@ export async function escalateFinding(
   const { data } = await api.post(`/findings/${id}/escalate`, escalate)
   return data
 }
+
+export interface ContextEvent {
+  time: string | null
+  host: string | null
+  user: string | null
+  process_name: string | null
+  pid: number | null
+  command_line: string | null
+  action: string | null
+  message: string | null
+  rule_id: string | null
+  severity: number | null
+}
+
+export interface FindingContext {
+  pivot: 'host' | 'process' | 'user'
+  entity: Record<string, string | null>
+  siem_type: string
+  connection_name: string
+  window_minutes: number
+  time_from: string
+  time_to: string
+  count: number
+  events: ContextEvent[]
+}
+
+export async function getFindingContext(
+  id: string,
+  pivot: 'host' | 'process' | 'user',
+  window: number,
+): Promise<FindingContext> {
+  const { data } = await api.get(`/findings/${id}/context`, { params: { pivot, window } })
+  return data
+}

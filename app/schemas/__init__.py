@@ -198,6 +198,33 @@ class HuntResultResponse(BaseModel):
     created_at: datetime
 
 
+class ContextEvent(BaseModel):
+    """One event around a finding, reduced to what an analyst scans."""
+    time: Optional[datetime] = None
+    host: Optional[str] = None
+    user: Optional[str] = None
+    process_name: Optional[str] = None
+    pid: Optional[int] = None
+    command_line: Optional[str] = None
+    action: Optional[str] = None
+    message: Optional[str] = None
+    rule_id: Optional[str] = None
+    severity: Optional[int] = None
+
+
+class FindingContextResponse(BaseModel):
+    """Read-only events from the finding's own SIEM around the time it was seen."""
+    pivot: str
+    entity: dict
+    siem_type: str
+    connection_name: str
+    window_minutes: int
+    time_from: datetime
+    time_to: datetime
+    count: int
+    events: List[ContextEvent]
+
+
 class FindingUpdate(BaseModel):
     """Analyst workflow — update finding status/comment."""
     analyst_status: Optional[str] = Field(

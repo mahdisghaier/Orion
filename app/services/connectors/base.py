@@ -5,6 +5,7 @@ same interface so the Hunt Runner (Layer 3/6) can treat every SIEM
 identically, per Chapter 3.2 of the architecture brief.
 """
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import List, Optional
 
 
@@ -31,3 +32,20 @@ class BaseSIEMConnector(ABC):
     async def test_connection(self) -> bool:
         """Health check used by admin UI / SIEM connection testing."""
         ...
+
+    async def fetch_context(
+        self,
+        kind: str,
+        entity: dict,
+        start: datetime,
+        end: datetime,
+        max_results: int = 100,
+    ) -> List[dict]:
+        """Read-only: events around a finding, for the analyst to pivot on.
+
+        kind is "host", "process" or "user"; entity carries the finding's
+        host / process_name / user values. Only fixed, parameterised queries are
+        allowed here (no analyst-supplied query text). Returns ECS-shaped events,
+        newest first. Connectors that cannot do this keep the default.
+        """
+        raise NotImplementedError(f"{self.siem_type} connector does not support context pivots")

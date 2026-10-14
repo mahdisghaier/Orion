@@ -1,7 +1,7 @@
 """Findings API — list, inspect, and manage hunt results."""
 from uuid import UUID
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select, func
@@ -10,8 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
-from app.models import HuntResult, Incident, User
+from app.models import HuntResult, Incident, SIEMConnection, User
+from app.services.connectors.factory import ConnectorError, get_connector
+from app.services.ecs import extract_ecs_fields, get_nested
 from app.schemas import (
+    ContextEvent, FindingContextResponse,
     HuntResultResponse, FindingUpdate, FindingEscalate,
     IncidentResponse, PaginatedResponse,
 )
@@ -80,6 +83,81 @@ async def get_finding(
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
     return finding
+
+
+_PIVOT_FIELD = {"host": "host_name", "process": "process_name", "user": "user_name"}
+
+
+@router.get("/{finding_id}/context", response_model=FindingContextResponse)
+async def get_finding_context(
+    finding_id: UUID,
+    request: Request,
+    pivot: str = Query("host", pattern="^(host|process|user)$"),
+    window: int = Query(15, ge=1, le=120, description="minutes before and after the finding"),
+    limit: int = Query(100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Events from the finding's own SIEM around the time it was seen (read-only).
+
+    The analyst picks one of three fixed pivots (same host, same process, same user)
+    and a bounded window; no query text is accepted. Every call is audited.
+    """
+    finding = (await db.execute(
+        select(HuntResult).where(HuntResult.id == finding_id)
+    )).scalar_one_or_none()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+
+    value = getattr(finding, _PIVOT_FIELD[pivot])
+    if not value:
+        raise HTTPException(status_code=422, detail=f"This finding has no {pivot} to pivot on")
+
+    connection = await db.get(SIEMConnection, finding.siem_connection_id) if finding.siem_connection_id else None
+    if connection is None or not connection.is_active:
+        raise HTTPException(status_code=409, detail="The SIEM connection for this finding is no longer active")
+
+    try:
+        connector = get_connector(connection)
+    except ConnectorError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    centre = finding.last_seen or finding.event_time
+    if centre.tzinfo is None:
+        centre = centre.replace(tzinfo=timezone.utc)
+    start, end = centre - timedelta(minutes=window), centre + timedelta(minutes=window)
+    entity = {"host": finding.host_name, "process_name": finding.process_name, "user": finding.user_name}
+
+    try:
+        raw_events = await connector.fetch_context(pivot, entity, start, end, limit)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"{connection.name}: {e}")
+
+    events = []
+    for raw in raw_events:
+        fields = extract_ecs_fields(raw)
+        events.append(ContextEvent(
+            time=fields["event_time"], host=fields["host_name"], user=fields["user_name"],
+            process_name=fields["process_name"], pid=get_nested(raw, "process.pid"),
+            command_line=fields["process_command_line"], action=fields["action"],
+            message=get_nested(raw, "message"), rule_id=get_nested(raw, "rule.id"),
+            severity=get_nested(raw, "event.severity"),
+        ))
+
+    await log_action(
+        db, user_id=current_user.id, action="finding.context",
+        target_type="finding", target_id=finding_id,
+        metadata={"pivot": pivot, "value": value, "window_minutes": window, "returned": len(events)},
+        request=request,
+    )
+    await db.commit()
+
+    return FindingContextResponse(
+        pivot=pivot, entity=entity, siem_type=finding.siem_type, connection_name=connection.name,
+        window_minutes=window, time_from=start, time_to=end, count=len(events), events=events,
+    )
 
 
 @router.patch("/{finding_id}", response_model=HuntResultResponse)

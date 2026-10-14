@@ -5,6 +5,7 @@ ECS-normalized events. Per Chapter 3.2: authenticates via API key
 (when configured), calls POST /_eql/search with the EQL query in the
 request body, uses httpx.AsyncClient for non-blocking I/O.
 """
+from datetime import datetime
 from typing import List, Optional
 
 import httpx
@@ -98,3 +99,44 @@ class ElasticConnector(BaseSIEMConnector):
                 return response.status_code == 200
         except httpx.RequestError:
             return False
+
+    async def fetch_context(
+        self,
+        kind: str,
+        entity: dict,
+        start: datetime,
+        end: datetime,
+        max_results: int = 100,
+    ) -> List[dict]:
+        """Events around a finding: same host, same process on the host, or same user."""
+        filters = [{"range": {"@timestamp": {"gte": start.isoformat(), "lte": end.isoformat()}}}]
+        host, process, user = entity.get("host"), entity.get("process_name"), entity.get("user")
+        if kind == "host":
+            filters.append({"term": {"host.name": host}})
+        elif kind == "process":
+            filters.append({"term": {"process.name": process}})
+            if host:
+                filters.append({"term": {"host.name": host}})
+        elif kind == "user":
+            filters.append({"term": {"user.name": user}})
+            if host:
+                filters.append({"term": {"host.name": host}})
+        else:
+            raise ValueError(f"unknown pivot kind: {kind}")
+
+        body = {
+            "size": min(max_results, 200),
+            "sort": [{"@timestamp": "desc"}],
+            "query": {"bool": {"filter": filters}},
+        }
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.cluster_url}/{self.index_pattern}/_search", json=body, headers=self._headers())
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise ElasticConnectionError(
+                f"Elastic context query failed ({e.response.status_code}): {e.response.text[:300]}") from e
+        except httpx.RequestError as e:
+            raise ElasticConnectionError(f"Elastic connection failed: {e}") from e
+        return [hit.get("_source", {}) for hit in response.json().get("hits", {}).get("hits", [])]

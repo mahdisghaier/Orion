@@ -47,7 +47,8 @@ class HuntRunner:
                 tags = parsed.get("tags", []) if parsed else []
                 mitre_tactics, mitre_techniques = extract_mitre_from_tags(tags)
             except Exception:
-                mitre_tactics, mitre_techniques = [], []
+                parsed, tags, mitre_tactics, mitre_techniques = None, [], [], []
+            rule_id = await self._save_inline_rule(rule_yaml, parsed, tags, mitre_tactics, mitre_techniques)
         else:
             raise HuntRunnerError("Either rule_id or rule_yaml must be provided")
 
@@ -96,6 +97,40 @@ class HuntRunner:
         await self.db.commit()
         await self.db.refresh(hunt)
         return hunt
+
+    async def _save_inline_rule(self, rule_yaml, parsed, tags, mitre_tactics, mitre_techniques) -> Optional[UUID]:
+        """Keep the exact rule a hunt ran, so every finding can be traced back to it.
+
+        A rule is stored once per distinct YAML text (an edited rule is a new row, old hunts
+        keep pointing at what they actually ran). Returns None when the YAML is not a mapping.
+        """
+        if not isinstance(parsed, dict):
+            return None
+        existing = (await self.db.execute(
+            select(SigmaRule).where(SigmaRule.yaml == rule_yaml).limit(1)
+        )).scalar_one_or_none()
+        if existing:
+            return existing.id
+
+        rule_uuid = str(parsed["id"]) if parsed.get("id") else None
+        if rule_uuid and (await self.db.execute(
+            select(SigmaRule.id).where(SigmaRule.rule_uuid == rule_uuid)
+        )).first():
+            rule_uuid = None            # that UUID belongs to an earlier version of the rule
+
+        rule = SigmaRule(
+            title=str(parsed.get("title") or "Untitled hunt rule")[:500],
+            rule_uuid=rule_uuid,
+            yaml=rule_yaml,
+            source="custom",
+            mitre_tactics=mitre_tactics or None,
+            mitre_techniques=mitre_techniques or None,
+            tags=[str(t) for t in tags] or None,
+            author=str(parsed["author"]) if parsed.get("author") else None,
+        )
+        self.db.add(rule)
+        await self.db.flush()
+        return rule.id
 
     async def _run_hunt(self, hunt: Hunt, rule_yaml: str, mitre_tactics: List[str], mitre_techniques: List[str]):
         hunt.status = "running"

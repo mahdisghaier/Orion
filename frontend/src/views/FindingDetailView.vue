@@ -127,6 +127,64 @@
         </div>
       </div>
 
+      <!-- Related events: read-only pivot into the finding's own SIEM -->
+      <div class="bg-white border rounded-lg p-6">
+        <h2 class="text-lg font-bold mb-1">Related events</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Read-only look at what the {{ finding.siem_type }} SIEM recorded around this finding.
+          Fixed pivots only; every lookup is audited.
+        </p>
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            v-for="p in pivots" :key="p.key"
+            :disabled="!p.available || ctxLoading"
+            @click="loadContext(p.key)"
+            :class="ctx?.pivot === p.key ? 'bg-[#1a4a7a] text-white' : 'bg-white text-[#1a4a7a] border border-[#1a4a7a]'"
+            class="px-3 py-1.5 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {{ p.label }}
+          </button>
+          <select v-model.number="ctxWindow" class="px-2 py-1.5 border rounded text-sm">
+            <option :value="5">&plusmn; 5 min</option>
+            <option :value="15">&plusmn; 15 min</option>
+            <option :value="60">&plusmn; 60 min</option>
+          </select>
+        </div>
+
+        <div v-if="ctxLoading" class="text-sm text-gray-500">Loading related events...</div>
+        <div v-else-if="ctxError" class="text-sm text-red-600">{{ ctxError }}</div>
+        <div v-else-if="ctx">
+          <p class="text-xs text-gray-500 mb-2">
+            {{ ctx.count }} event(s) from {{ ctx.connection_name }}, {{ formatTime(ctx.time_from) }} &ndash; {{ formatTime(ctx.time_to) }}
+          </p>
+          <p v-if="ctx.count === 0" class="text-sm text-gray-600">
+            Nothing recorded in this window. That does not prove nothing happened: the SIEM may not collect this activity.
+          </p>
+          <div v-else class="overflow-x-auto max-h-96 overflow-y-auto border rounded">
+            <table class="w-full text-xs">
+              <thead class="bg-gray-100 sticky top-0">
+                <tr>
+                  <th class="text-left px-3 py-2">Time</th>
+                  <th class="text-left px-3 py-2">Process / action</th>
+                  <th class="text-left px-3 py-2">User</th>
+                  <th class="text-left px-3 py-2">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(ev, i) in ctx.events" :key="i" class="border-t">
+                  <td class="px-3 py-2 whitespace-nowrap text-gray-600">{{ formatTime(ev.time) }}</td>
+                  <td class="px-3 py-2 font-mono">
+                    {{ ev.process_name || ev.action || '—' }}<span v-if="ev.pid" class="text-gray-400"> ({{ ev.pid }})</span>
+                  </td>
+                  <td class="px-3 py-2">{{ ev.user || '—' }}</td>
+                  <td class="px-3 py-2 text-gray-600 break-all">{{ ev.command_line || ev.message || '' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Raw ECS event (collapsible) -->
       <div class="bg-white border rounded-lg p-6">
         <button
@@ -183,10 +241,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getFinding, updateFinding, escalateFinding, type Finding } from '@/api/findings'
+import {
+  getFinding, updateFinding, escalateFinding, getFindingContext,
+  type Finding, type FindingContext,
+} from '@/api/findings'
 
 const route = useRoute()
 const router = useRouter()
@@ -201,6 +262,31 @@ const showRawEvent = ref(false)
 const showEscalateModal = ref(false)
 const escalateTitle = ref('')
 const escalateSeverity = ref('medium')
+
+const ctx = ref<FindingContext | null>(null)
+const ctxLoading = ref(false)
+const ctxError = ref('')
+const ctxWindow = ref(15)
+
+const pivots = computed(() => [
+  { key: 'host' as const, label: 'Same host', available: !!finding.value?.host_name },
+  { key: 'process' as const, label: 'Same process', available: !!finding.value?.process_name },
+  { key: 'user' as const, label: 'Same user', available: !!finding.value?.user_name },
+])
+
+async function loadContext(pivot: 'host' | 'process' | 'user') {
+  if (!finding.value) return
+  ctxLoading.value = true
+  ctxError.value = ''
+  try {
+    ctx.value = await getFindingContext(finding.value.id, pivot, ctxWindow.value)
+  } catch (e: any) {
+    ctx.value = null
+    ctxError.value = e.response?.data?.detail || 'Failed to load related events'
+  } finally {
+    ctxLoading.value = false
+  }
+}
 
 async function loadFinding() {
   loading.value = true
