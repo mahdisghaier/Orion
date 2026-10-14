@@ -332,6 +332,81 @@ class AnalystFeedbackResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────
+# INVESTIGATION (hunt record)
+# ─────────────────────────────────────────────────────────────────
+class InvestigationCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    hypothesis: str = Field(..., min_length=1, max_length=2000)
+    siem_targets: Optional[List[UUID]] = None     # default: every active SIEM connection
+    time_range: Optional[dict] = None
+    from_finding_id: Optional[UUID] = None
+
+
+class StepCreate(BaseModel):
+    """An analyst-authored rule step. It is validated like an AI proposal and still needs approval."""
+    title: str = Field(..., min_length=1, max_length=120)
+    rationale: Optional[str] = Field(None, max_length=600)
+    sigma_rule: str = Field(..., min_length=1, max_length=20000)
+
+
+class StepDecision(BaseModel):
+    comment: Optional[str] = Field(None, max_length=1000)
+
+
+class InvestigationConclude(BaseModel):
+    verdict: str = Field(..., pattern="^(true_positive|false_positive|inconclusive)$")
+    conclusion: str = Field(..., min_length=1, max_length=4000)
+
+
+class InvestigationStepResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    investigation_id: UUID
+    seq: int
+    kind: str
+    title: str
+    rationale: str
+    proposed_by: str
+    payload: dict
+    assessment: Optional[dict] = None
+    status: str
+    decided_by: Optional[UUID] = None
+    decided_at: Optional[datetime] = None
+    decision_comment: Optional[str] = None
+    hunt_id: Optional[UUID] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None
+    executed_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class InvestigationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    hypothesis: str
+    status: str
+    verdict: Optional[str] = None
+    conclusion: Optional[str] = None
+    siem_targets: List[UUID]
+    time_range: Optional[dict] = None
+    source_finding_id: Optional[UUID] = None
+    created_by: UUID
+    concluded_by: Optional[UUID] = None
+    created_at: datetime
+    concluded_at: Optional[datetime] = None
+    steps: List[InvestigationStepResponse] = []
+
+
+class ProposeResponse(BaseModel):
+    new_steps: List[InvestigationStepResponse]
+    rejected: List[dict]          # AI proposals that validation refused, with the reason
+    notes: List[str]
+
+
+# ─────────────────────────────────────────────────────────────────
 # PAGINATION
 # ─────────────────────────────────────────────────────────────────
 class PaginatedResponse(BaseModel):

@@ -42,7 +42,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Target, Bug, Server, Users, LogOut, MessageCircle } from 'lucide-vue-next'
+import { Target, Bug, Server, Users, LogOut, MessageCircle, Search } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -51,6 +51,7 @@ const navItems = computed(() => {
   const items = [
     { path: '/chat', label: 'AI Assistant', icon: MessageCircle },
     { path: '/findings', label: 'Findings', icon: Bug },
+    { path: '/investigations', label: 'Investigations', icon: Search },
     { path: '/hunts', label: 'Hunts', icon: Target },
   ]
   if (auth.isAdmin) {

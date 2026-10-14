@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import engine
-from app.api import auth, users, siem, hunts, findings, chat, sigma
+from app.api import auth, users, siem, hunts, findings, chat, sigma, investigations
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ app.include_router(hunts.router, prefix="/api/hunts", tags=["hunts"])
 app.include_router(findings.router, prefix="/api/findings", tags=["findings"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(sigma.router, prefix="/api/sigma", tags=["sigma"])
+app.include_router(investigations.router, prefix="/api/investigations", tags=["investigations"])
 
 
 @app.get("/health")

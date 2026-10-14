@@ -107,6 +107,14 @@
             Escalate to Incident
           </button>
           <button
+            @click="investigate"
+            :disabled="saving"
+            class="px-4 py-2 bg-[#1a4a7a] hover:bg-[#2d7ab3] text-white rounded text-sm disabled:opacity-50"
+            title="Open an investigation starting from this finding"
+          >
+            Investigate
+          </button>
+          <button
             v-if="!finding.suppressed && finding.analyst_status !== 'validated' && finding.analyst_status !== 'escalated'"
             @click="showSuppressModal = true"
             :disabled="saving"
@@ -343,6 +351,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { createInvestigation } from '@/api/investigations'
 import {
   getFinding, updateFinding, escalateFinding, getFindingContext, suppressFinding, unsuppressFinding,
   type Finding, type FindingContext,
@@ -363,6 +372,25 @@ const escalateTitle = ref('')
 const escalateSeverity = ref('medium')
 
 const showSuppressModal = ref(false)
+
+async function investigate() {
+  if (!finding.value) return
+  saving.value = true
+  try {
+    const f = finding.value
+    const inv = await createInvestigation({
+      title: `Investigate: ${f.process_name || f.action || 'finding'} on ${f.host_name || 'unknown host'}`,
+      hypothesis: `Is the ${f.process_name || 'activity'} seen on ${f.host_name || 'this host'} ` +
+        `(${f.siem_type}, priority ${f.priority_score ?? 'n/a'}) malicious, and how far did it go?`,
+      from_finding_id: f.id,
+    })
+    router.push(`/investigations/${inv.id}`)
+  } catch (e: any) {
+    error.value = e.response?.data?.detail || 'Could not start an investigation'
+  } finally {
+    saving.value = false
+  }
+}
 const suppressComment = ref('')
 const suppressNote = ref('')
 

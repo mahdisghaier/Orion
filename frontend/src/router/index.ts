@@ -33,6 +33,18 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'investigations',
+        name: 'investigations',
+        component: () => import('@/views/InvestigationsView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'investigations/:id',
+        name: 'investigation-detail',
+        component: () => import('@/views/InvestigationDetailView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'hunts',
         name: 'hunts',
         component: () => import('@/views/HuntsView.vue'),

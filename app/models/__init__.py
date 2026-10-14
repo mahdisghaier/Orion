@@ -198,6 +198,85 @@ class Hunt(Base):
 # ─────────────────────────────────────────────────────────────────
 # 5. HUNT RESULTS / FINDINGS
 # ─────────────────────────────────────────────────────────────────
+class Investigation(Base):
+    """A hunt record: a hypothesis and the steps taken to test it, with who approved what and what came out."""
+    __tablename__ = "investigations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    hypothesis: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, server_default="open", nullable=False)
+    verdict: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    conclusion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    siem_targets: Mapped[List[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False)
+    time_range: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    source_finding_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hunt_results.id", ondelete="SET NULL"), nullable=True
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    concluded_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    concluded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('open','concluded')", name="ck_investigation_status"),
+        CheckConstraint(
+            "verdict IS NULL OR verdict IN ('true_positive','false_positive','inconclusive')",
+            name="ck_investigation_verdict",
+        ),
+    )
+
+    steps: Mapped[List["InvestigationStep"]] = relationship(
+        back_populates="investigation", order_by="InvestigationStep.seq", cascade="all, delete-orphan"
+    )
+
+
+class InvestigationStep(Base):
+    """One proposed/approved/executed step of an investigation (a Sigma rule to hunt, or a pivot on a finding)."""
+    __tablename__ = "investigation_steps"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    investigation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("investigations.id", ondelete="CASCADE"), nullable=False
+    )
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_by: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    assessment: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    status: Mapped[str] = mapped_column(Text, server_default="proposed", nullable=False)
+    decided_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    hunt_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hunts.id", ondelete="SET NULL"), nullable=True
+    )
+    result: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    executed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('rule','pivot')", name="ck_step_kind"),
+        CheckConstraint("proposed_by IN ('ai','system','analyst')", name="ck_step_proposed_by"),
+        CheckConstraint(
+            "status IN ('proposed','approved','rejected','executed','failed')", name="ck_step_status"
+        ),
+        UniqueConstraint("investigation_id", "seq", name="uq_step_seq"),
+        Index("idx_steps_investigation", "investigation_id"),
+    )
+
+    investigation: Mapped["Investigation"] = relationship(back_populates="steps")
+
+
 class SIEMProfile(Base):
     """Latest data profile of a SIEM connection (services/data_profile.py); one row per connection."""
     __tablename__ = "siem_profiles"

@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
 from app.models import FindingSuppression, HuntResult, Incident, SIEMConnection, User
 from app.services.corroboration import enrich_findings
+from app.services.finding_context import PIVOT_FIELD, ContextError, fetch_finding_context
 from app.services.prioritization import rescore_fingerprint
 from app.services.connectors.factory import ConnectorError, get_connector
 from app.services.ecs import extract_ecs_fields, get_nested
@@ -109,9 +110,6 @@ async def get_finding(
     return finding
 
 
-_PIVOT_FIELD = {"host": "host_name", "process": "process_name", "user": "user_name"}
-
-
 @router.get("/{finding_id}/context", response_model=FindingContextResponse)
 async def get_finding_context(
     finding_id: UUID,
@@ -133,54 +131,25 @@ async def get_finding_context(
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
 
-    value = getattr(finding, _PIVOT_FIELD[pivot])
-    if not value:
-        raise HTTPException(status_code=422, detail=f"This finding has no {pivot} to pivot on")
-
-    connection = await db.get(SIEMConnection, finding.siem_connection_id) if finding.siem_connection_id else None
-    if connection is None or not connection.is_active:
-        raise HTTPException(status_code=409, detail="The SIEM connection for this finding is no longer active")
-
     try:
-        connector = get_connector(connection)
-    except ConnectorError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-    centre = finding.last_seen or finding.event_time
-    if centre.tzinfo is None:
-        centre = centre.replace(tzinfo=timezone.utc)
-    start, end = centre - timedelta(minutes=window), centre + timedelta(minutes=window)
-    entity = {"host": finding.host_name, "process_name": finding.process_name, "user": finding.user_name}
-
-    try:
-        raw_events = await connector.fetch_context(pivot, entity, start, end, limit)
-    except NotImplementedError as e:
-        raise HTTPException(status_code=501, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"{connection.name}: {e}")
-
-    events = []
-    for raw in raw_events:
-        fields = extract_ecs_fields(raw)
-        events.append(ContextEvent(
-            time=fields["event_time"], host=fields["host_name"], user=fields["user_name"],
-            process_name=fields["process_name"], pid=get_nested(raw, "process.pid"),
-            command_line=fields["process_command_line"], action=fields["action"],
-            message=get_nested(raw, "message"), rule_id=get_nested(raw, "rule.id"),
-            severity=get_nested(raw, "event.severity"),
-        ))
+        result = await fetch_finding_context(db, finding, pivot, window, limit)
+    except ContextError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
 
     await log_action(
         db, user_id=current_user.id, action="finding.context",
         target_type="finding", target_id=finding_id,
-        metadata={"pivot": pivot, "value": value, "window_minutes": window, "returned": len(events)},
+        metadata={"pivot": pivot, "value": getattr(finding, PIVOT_FIELD[pivot]), "window_minutes": window,
+                  "returned": len(result["events"])},
         request=request,
     )
     await db.commit()
 
     return FindingContextResponse(
-        pivot=pivot, entity=entity, siem_type=finding.siem_type, connection_name=connection.name,
-        window_minutes=window, time_from=start, time_to=end, count=len(events), events=events,
+        pivot=pivot, entity=result["entity"], siem_type=result["siem_type"],
+        connection_name=result["connection_name"], window_minutes=result["window_minutes"],
+        time_from=result["time_from"], time_to=result["time_to"], count=len(result["events"]),
+        events=[ContextEvent(**e) for e in result["events"]],
     )
 
 
