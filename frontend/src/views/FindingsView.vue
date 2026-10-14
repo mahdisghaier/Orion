@@ -13,6 +13,11 @@
           <option value="wazuh">Wazuh</option>
           <option value="sentinel">Sentinel</option>
         </select>
+        <select v-model="filters.corroborated" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
+          <option value="">Any confirmation</option>
+          <option value="true">Seen by 2+ SIEMs</option>
+          <option value="false">Single SIEM only</option>
+        </select>
         <select v-model="filters.analyst_status" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
           <option value="">All Status</option>
           <option value="new">New</option>
@@ -63,6 +68,13 @@
               <span :class="siemBadge(finding.siem_type)" class="px-2 py-0.5 rounded text-xs font-medium">
                 {{ finding.siem_type }}
               </span>
+              <div
+                v-if="finding.corroborated_by?.length"
+                class="text-xs text-emerald-700 mt-1"
+                :title="'Also reported by ' + finding.corroborated_by.map(c => c.siem_type).join(', ')"
+              >
+                &check; also in {{ finding.corroborated_by.map(c => c.siem_type).join(', ') }}
+              </div>
             </td>
             <td class="px-4 py-3">
               <div class="font-mono text-xs">{{ finding.process_name || '—' }}</div>
@@ -133,6 +145,7 @@ const filters = reactive({
   page_size: 20,
   siem_type: '',
   analyst_status: '',
+  corroborated: '',
 })
 
 async function loadFindings() {
@@ -143,6 +156,7 @@ async function loadFindings() {
       page_size: filters.page_size,
       siem_type: filters.siem_type || undefined,
       analyst_status: filters.analyst_status || undefined,
+      corroborated: filters.corroborated === '' ? undefined : filters.corroborated === 'true',
     })
     findings.value = data.items
     total.value = data.total

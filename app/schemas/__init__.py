@@ -170,6 +170,12 @@ class HuntResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────
 # HUNT RESULT / FINDING
 # ─────────────────────────────────────────────────────────────────
+class CorroboratingFinding(BaseModel):
+    """Another finding of the same hunt that a different SIEM reported for the same behaviour."""
+    id: UUID
+    siem_type: str
+
+
 class HuntResultResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -187,6 +193,8 @@ class HuntResultResponse(BaseModel):
     occurrence_count: int = 1
     first_seen: Optional[datetime] = None
     last_seen: Optional[datetime] = None
+    correlation_id: Optional[str] = None
+    corroborated_by: List[CorroboratingFinding] = []
     ecs_event: dict
     mitre_techniques: Optional[List[str]] = None
     mitre_mapping_source: str

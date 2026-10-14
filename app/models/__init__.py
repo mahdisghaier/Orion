@@ -228,6 +228,9 @@ class HuntResult(Base):
     occurrence_count: Mapped[int] = mapped_column(Integer, server_default="1", nullable=False)
     first_seen: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Findings of the same hunt that different SIEMs reported for the same behaviour share this id
+    # (see services/correlation.py).
+    correlation_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Full ECS event (flexible, for display + AI analysis)
     ecs_event: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -268,6 +271,7 @@ class HuntResult(Base):
         ),
         Index("idx_results_hunt", "hunt_id"),
         Index("idx_results_fingerprint", "fingerprint"),
+        Index("idx_results_correlation", "correlation_id"),
         Index("idx_results_time_desc", "event_time", postgresql_ops={"event_time": "DESC"}),
         Index("idx_results_siem", "siem_type"),
         Index("idx_results_status", "analyst_status"),

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Hunt, HuntResult, SIEMConnection, SigmaRule
 from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
+from app.services.correlation import Candidate, correlate
 from app.services.grouping import group_events
 from app.services.sigma_engine import convert_sigma_rule, unmapped_fields
 
@@ -190,6 +191,7 @@ class HuntRunner:
         total_hits = 0
         errors = list(notes)
         failed_queries = 0
+        findings: List[HuntResult] = []
 
         for idx, result in enumerate(results):
             conn, siem_type = conn_map[idx]
@@ -222,7 +224,15 @@ class HuntRunner:
                     **group.fields,
                 )
                 self.db.add(finding)
+                findings.append(finding)
                 total_hits += 1
+
+        # Same behaviour reported by different SIEMs -> shared correlation_id
+        ids = correlate([
+            Candidate(f.siem_type, f.host_name, f.process_name, f.first_seen, f.last_seen) for f in findings
+        ])
+        for finding, correlation_id in zip(findings, ids):
+            finding.correlation_id = correlation_id
 
         # Every SIEM that was queried failed: this is a failed hunt, not a clean one.
         hunt.status = "failed" if failed_queries == len(tasks) else "completed"

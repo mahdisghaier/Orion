@@ -127,6 +127,22 @@
         </div>
       </div>
 
+      <!-- Corroboration: other SIEMs that reported the same behaviour in this hunt -->
+      <div v-if="finding.corroborated_by?.length" class="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+        <p class="text-sm font-medium text-emerald-800">
+          Corroborated: also reported by
+          <RouterLink
+            v-for="c in finding.corroborated_by" :key="c.id"
+            :to="`/findings/${c.id}`"
+            class="underline mx-1"
+          >{{ c.siem_type }}</RouterLink>
+          for the same host and process in this hunt.
+        </p>
+        <p class="text-xs text-emerald-700 mt-1">
+          Two independent sources agreeing is stronger evidence than one. Each SIEM keeps its own finding and event.
+        </p>
+      </div>
+
       <!-- Related events: read-only pivot into the finding's own SIEM -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-1">Related events</h2>

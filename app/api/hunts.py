@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models import Hunt, HuntResult, User
 from app.schemas import HuntCreate, HuntResponse, HuntResultResponse, PaginatedResponse
+from app.services.corroboration import attach_corroboration
 from app.services.hunt_runner import HuntRunner, HuntRunnerError
 
 router = APIRouter()
@@ -109,4 +110,4 @@ async def get_hunt_results(
         .offset(offset)
         .limit(limit)
     )
-    return result.scalars().all()
+    return await attach_corroboration(db, result.scalars().all())

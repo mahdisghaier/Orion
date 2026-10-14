@@ -17,6 +17,8 @@ export interface Finding {
   mitre_mapping_source: string
   analyst_status: 'new' | 'validated' | 'false_positive' | 'escalated'
   occurrence_count: number
+  correlation_id: string | null
+  corroborated_by: { id: string; siem_type: string }[]
   first_seen: string | null
   last_seen: string | null
   analyst_comment: string | null
@@ -39,6 +41,7 @@ export interface FindingFilters {
   page_size?: number
   siem_type?: string
   analyst_status?: string
+  corroborated?: boolean
   source_ip?: string
   host_name?: string
   hunt_id?: string
@@ -50,6 +53,7 @@ export async function getFindings(filters: FindingFilters = {}): Promise<Paginat
   if (filters.page_size) params.append('page_size', String(filters.page_size))
   if (filters.siem_type) params.append('siem_type', filters.siem_type)
   if (filters.analyst_status) params.append('analyst_status', filters.analyst_status)
+  if (filters.corroborated !== undefined) params.append('corroborated', String(filters.corroborated))
   if (filters.source_ip) params.append('source_ip', filters.source_ip)
   if (filters.host_name) params.append('host_name', filters.host_name)
   if (filters.hunt_id) params.append('hunt_id', filters.hunt_id)

@@ -11,6 +11,7 @@ from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
 from app.models import HuntResult, Incident, SIEMConnection, User
+from app.services.corroboration import attach_corroboration
 from app.services.connectors.factory import ConnectorError, get_connector
 from app.services.ecs import extract_ecs_fields, get_nested
 from app.schemas import (
@@ -31,6 +32,7 @@ async def list_findings(
     source_ip: Optional[str] = Query(None),
     host_name: Optional[str] = Query(None),
     hunt_id: Optional[UUID] = Query(None),
+    corroborated: Optional[bool] = Query(None, description="true: only findings that 2+ SIEMs reported"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -53,13 +55,17 @@ async def list_findings(
     if hunt_id:
         query = query.where(HuntResult.hunt_id == hunt_id)
         count_query = count_query.where(HuntResult.hunt_id == hunt_id)
+    if corroborated is not None:
+        cond = HuntResult.correlation_id.is_not(None) if corroborated else HuntResult.correlation_id.is_(None)
+        query = query.where(cond)
+        count_query = count_query.where(cond)
 
     total = (await db.execute(count_query)).scalar()
     offset = (page - 1) * page_size
     result = await db.execute(
         query.order_by(HuntResult.event_time.desc()).offset(offset).limit(page_size)
     )
-    findings = result.scalars().all()
+    findings = await attach_corroboration(db, result.scalars().all())
 
     return {
         "items": [HuntResultResponse.model_validate(f) for f in findings],
@@ -82,6 +88,7 @@ async def get_finding(
     )).scalar_one_or_none()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
+    await attach_corroboration(db, [finding])
     return finding
 
 
@@ -195,6 +202,7 @@ async def update_finding(
         await db.commit()
         await db.refresh(finding)
 
+    await attach_corroboration(db, [finding])
     return finding
 
 
