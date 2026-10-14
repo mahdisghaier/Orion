@@ -68,6 +68,7 @@
         </div>
       </div>
 
+      <!-- [explain] Decisions are for L2+ analysts. L1 only reads (see the box below this one). -->
       <!-- Analyst workflow (L2+ only) -->
       <div v-if="auth.isL2Plus" class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">Analyst Review</h2>
@@ -144,6 +145,7 @@
         </div>
       </div>
 
+      <!-- [explain] The 0-100 score and the reasons behind each point. It is computed by ORION, not by the AI. -->
       <!-- Priority: deterministic score with its reasons -->
       <div v-if="finding.priority_score !== null" class="bg-white border rounded-lg p-6">
         <div class="flex items-baseline gap-3 mb-1">
@@ -169,6 +171,7 @@
         </table>
       </div>
 
+      <!-- [explain] Warnings: this was already suppressed, or it is not new (seen in earlier hunts). -->
       <!-- History + suppression state -->
       <div v-if="finding.suppressed" class="bg-gray-100 border border-gray-300 rounded-lg p-4 flex justify-between items-center gap-4">
         <div>
@@ -206,6 +209,7 @@
         </p>
       </div>
 
+      <!-- [explain] Safe "look around": only three fixed questions and a time window, never a typed query. -->
       <!-- Related events: read-only pivot into the finding's own SIEM -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-1">Related events</h2>
@@ -264,6 +268,7 @@
         </div>
       </div>
 
+      <!-- [explain] The full event as stored, for the curious. -->
       <!-- Raw ECS event (collapsible) -->
       <div class="bg-white border rounded-lg p-6">
         <button
@@ -373,6 +378,7 @@ const escalateSeverity = ref('medium')
 
 const showSuppressModal = ref(false)
 
+// [explain] Open a hunt notebook that starts from this finding, with a ready-made title and hunch.
 async function investigate() {
   if (!finding.value) return
   saving.value = true
@@ -394,6 +400,7 @@ async function investigate() {
 const suppressComment = ref('')
 const suppressNote = ref('')
 
+// [explain] Remember this behaviour as harmless: it will be hidden from now on (and can be undone).
 async function doSuppress() {
   if (!finding.value) return
   saving.value = true
@@ -411,6 +418,7 @@ async function doSuppress() {
   }
 }
 
+// [explain] Take the "known benign" decision back.
 async function doUnsuppress() {
   if (!finding.value) return
   saving.value = true
@@ -430,12 +438,14 @@ const ctxLoading = ref(false)
 const ctxError = ref('')
 const ctxWindow = ref(15)
 
+// [explain] Which "look around" buttons make sense: only those the finding has a value for (host, process, user).
 const pivots = computed(() => [
   { key: 'host' as const, label: 'Same host', available: !!finding.value?.host_name },
   { key: 'process' as const, label: 'Same process', available: !!finding.value?.process_name },
   { key: 'user' as const, label: 'Same user', available: !!finding.value?.user_name },
 ])
 
+// [explain] Ask the server for the events around this finding in its own SIEM.
 async function loadContext(pivot: 'host' | 'process' | 'user') {
   if (!finding.value) return
   ctxLoading.value = true
@@ -450,6 +460,7 @@ async function loadContext(pivot: 'host' | 'process' | 'user') {
   }
 }
 
+// [explain] Fetch this finding.
 async function loadFinding() {
   loading.value = true
   try {
@@ -463,6 +474,7 @@ async function loadFinding() {
   }
 }
 
+// [explain] The analyst's decision on the finding (validate or false positive), with a comment.
 async function updateStatus(status: 'validated' | 'false_positive') {
   if (!finding.value) return
   saving.value = true
@@ -478,6 +490,7 @@ async function updateStatus(status: 'validated' | 'false_positive') {
   }
 }
 
+// [explain] Turn the finding into an incident.
 async function escalate() {
   if (!finding.value || !escalateTitle.value) return
   saving.value = true

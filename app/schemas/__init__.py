@@ -13,6 +13,8 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 # ─────────────────────────────────────────────────────────────────
 # AUTH
 # ─────────────────────────────────────────────────────────────────
+# [explain] Schemas are the shapes of the data going in and out of the API. FastAPI checks every request against them
+# [explain] and rejects anything that does not fit, before our code even runs.
 class Token(BaseModel):
     access_token: str
     refresh_token: str
@@ -43,6 +45,7 @@ class UserBase(BaseModel):
     role: str = Field(..., pattern="^(admin|soc_l1|soc_l2|soc_l3)$")
 
 
+# [explain] What an admin must send to create an account.
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128)
 
@@ -69,6 +72,7 @@ class SIEMConnectionBase(BaseModel):
     type: str = Field(..., pattern="^(sentinel|elastic|wazuh)$")
 
 
+# [explain] What an admin sends to register a SIEM. The config part is encrypted before it is stored.
 class SIEMConnectionCreate(SIEMConnectionBase):
     # Config is flexible JSON — different per SIEM type
     # Sentinel: {tenant_id, client_id, client_secret, workspace_id}
@@ -77,6 +81,7 @@ class SIEMConnectionCreate(SIEMConnectionBase):
     config: dict
 
 
+# [explain] What comes back about a SIEM: the name, type and status. Never the secret config.
 class SIEMConnectionResponse(SIEMConnectionBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -144,6 +149,7 @@ class SigmaRuleResponse(SigmaRuleBase):
 # ─────────────────────────────────────────────────────────────────
 # HUNT
 # ─────────────────────────────────────────────────────────────────
+# [explain] Start a hunt: a saved rule OR pasted rule text, which SIEMs, and an optional time range.
 class HuntCreate(BaseModel):
     """Request to create + run a hunt.
 
@@ -185,6 +191,7 @@ class CorroboratingFinding(BaseModel):
     siem_type: str
 
 
+# [explain] A finding as the screen receives it: the event, the score and its reasons, repeats, who else saw it, the analyst's status.
 class HuntResultResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -221,6 +228,7 @@ class HuntResultResponse(BaseModel):
     created_at: datetime
 
 
+# [explain] One line of the "Related events" list, cut down to what an analyst scans.
 class ContextEvent(BaseModel):
     """One event around a finding, reduced to what an analyst scans."""
     time: Optional[datetime] = None
@@ -258,6 +266,7 @@ class SuppressionResult(BaseModel):
     affected: int          # findings hidden (suppress) or restored (unsuppress)
 
 
+# [explain] What an analyst can change on a finding: its status and a comment.
 class FindingUpdate(BaseModel):
     """Analyst workflow — update finding status/comment."""
     analyst_status: Optional[str] = Field(
@@ -334,6 +343,7 @@ class AnalystFeedbackResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────
 # INVESTIGATION (hunt record)
 # ─────────────────────────────────────────────────────────────────
+# [explain] Open a notebook: a title and a hunch. If no SIEMs are named, all active ones are used.
 class InvestigationCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     hypothesis: str = Field(..., min_length=1, max_length=2000)
@@ -342,6 +352,7 @@ class InvestigationCreate(BaseModel):
     from_finding_id: Optional[UUID] = None
 
 
+# [explain] An analyst-written rule step. It is checked like an AI suggestion and still needs approval.
 class StepCreate(BaseModel):
     """An analyst-authored rule step. It is validated like an AI proposal and still needs approval."""
     title: str = Field(..., min_length=1, max_length=120)
@@ -353,6 +364,7 @@ class StepDecision(BaseModel):
     comment: Optional[str] = Field(None, max_length=1000)
 
 
+# [explain] Close an investigation: a verdict and a written conclusion.
 class InvestigationConclude(BaseModel):
     verdict: str = Field(..., pattern="^(true_positive|false_positive|inconclusive)$")
     conclusion: str = Field(..., min_length=1, max_length=4000)
@@ -400,6 +412,7 @@ class InvestigationResponse(BaseModel):
     steps: List[InvestigationStepResponse] = []
 
 
+# [explain] What a planning round returns: the new steps, the AI proposals that were refused (with reasons), and notes.
 class ProposeResponse(BaseModel):
     new_steps: List[InvestigationStepResponse]
     rejected: List[dict]          # AI proposals that validation refused, with the reason

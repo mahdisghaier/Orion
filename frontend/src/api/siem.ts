@@ -8,11 +8,13 @@ export interface SIEMConnection {
   created_at: string
 }
 
+// [explain] The connected SIEMs (admin only on the server).
 export async function getSIEMConnections(): Promise<SIEMConnection[]> {
   const { data } = await api.get('/siem/')
   return data
 }
 
+// [explain] The check-up of a SIEM as the screen receives it.
 export interface SIEMProfile {
   siem_type: string
   window_days: number
@@ -31,16 +33,19 @@ export interface StoredProfile {
   collected_at: string
 }
 
+// [explain] "Can ORION reach and log in to this SIEM?"
 export async function testSIEMConnection(id: string): Promise<{ success: boolean; message: string; latency_ms: number | null }> {
   const { data } = await api.post(`/siem/${id}/test`)
   return data
 }
 
+// [explain] Ask the server to measure the SIEM again (admin).
 export async function collectSIEMProfile(id: string): Promise<StoredProfile> {
   const { data } = await api.post(`/siem/${id}/profile`)
   return data
 }
 
+// [explain] Read the latest check-up; a missing one (404) just means "never measured".
 export async function getSIEMProfile(id: string): Promise<StoredProfile | null> {
   try {
     const { data } = await api.get(`/siem/${id}/profile`)

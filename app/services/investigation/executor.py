@@ -15,6 +15,8 @@ def _iso(value):
     return value.isoformat() if hasattr(value, "isoformat") else value
 
 
+# [explain] Runs ONE approved step. A rule step hunts the rule; a pivot step looks around a finding.
+# [explain] Whatever happens (success, error) is written on the step, so the record is complete.
 async def execute_step(db: AsyncSession, inv: Investigation, step: InvestigationStep, user: User) -> None:
     """Executes the step and sets its result / status. The caller commits."""
     step.executed_at = datetime.now(timezone.utc)

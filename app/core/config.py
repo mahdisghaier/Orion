@@ -56,4 +56,5 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 45.0
 
 # Singleton — import this everywhere: `from app.core.config import settings`
+# [explain] The one settings object the whole app imports. It reads its values from environment variables / the .env file.
 settings = Settings()

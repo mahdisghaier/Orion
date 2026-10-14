@@ -17,6 +17,7 @@ HOLD_SECONDS = 100          # how long the "long-lived" variants stay alive (Met
 NC_HOLD_SECONDS = 420       # the listener must outlive Wazuh's 360 s listening-port check
 
 
+# [explain] One running copy of a scenario. The marker is its unique stamp, so we can tell its events from everyone else's.
 @dataclass
 class Instance:
     technique: str
@@ -34,11 +35,13 @@ class Instance:
         return self.marker.lower() in text.lower()
 
 
+# [explain] Start a harmless process in the background, in its own process group so it can be stopped cleanly.
 def _spawn(argv: List[str]) -> subprocess.Popen:
     return subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             start_new_session=True)
 
 
+# [explain] Ask the system for a port nobody is using.
 def _free_port() -> int:
     import socket
     with socket.socket() as s:
@@ -48,6 +51,7 @@ def _free_port() -> int:
 
 # ── launchers: (run_id, variant, helper_port) -> Instance ────────────────────────────
 
+# [explain] T1046: a netcat listener on 127.0.0.1, the fake backdoor. The short variant is stopped after about a second.
 def launch_listener(run: str, variant: str, helper_port: int) -> Instance:
     port = _free_port()
     argv = ["nc", "-l", "-k", "127.0.0.1", str(port)] if variant == "long" else ["nc", "-l", "127.0.0.1", str(port)]
@@ -56,6 +60,7 @@ def launch_listener(run: str, variant: str, helper_port: int) -> Instance:
     return inst
 
 
+# [explain] T1059.004: a shell that just sleeps, with the marker written in its command line.
 def launch_shell(run: str, variant: str, helper_port: int) -> Instance:
     marker = f"orion-eval-{run}-sh-{variant}-{os.urandom(2).hex()}"
     seconds = HOLD_SECONDS if variant == "long" else 1
@@ -64,6 +69,7 @@ def launch_shell(run: str, variant: str, helper_port: int) -> Instance:
     return inst
 
 
+# [explain] T1105: curl talking to a helper that never answers, so curl stays alive until its time is up.
 def launch_transfer(run: str, variant: str, helper_port: int) -> Instance:
     marker = f"orion-eval-{run}-curl-{variant}-{os.urandom(2).hex()}"
     seconds = HOLD_SECONDS if variant == "long" else 1
@@ -74,6 +80,7 @@ def launch_transfer(run: str, variant: str, helper_port: int) -> Instance:
     return inst
 
 
+# [explain] T1070.003: runs "history -c" against a decoy file in /tmp. The real shell history is never touched.
 def launch_history_clear(run: str, variant: str, helper_port: int) -> Instance:
     marker = f"orion-eval-{run}-hist-{variant}-{os.urandom(2).hex()}"
     seconds = HOLD_SECONDS if variant == "long" else 1
@@ -84,6 +91,7 @@ def launch_history_clear(run: str, variant: str, helper_port: int) -> Instance:
     return inst
 
 
+# [explain] T1565.001: creates, edits and deletes a file in the watched scratch folder.
 def launch_file_change(run: str, variant: str, helper_port: int) -> Instance:
     marker = f"orion-eval-{run}-file-{os.urandom(2).hex()}"
     FIM_DIR.mkdir(exist_ok=True)
@@ -93,6 +101,7 @@ def launch_file_change(run: str, variant: str, helper_port: int) -> Instance:
     return inst
 
 
+# [explain] A technique = a name, the Sigma rule meant to find it, and how to start it.
 @dataclass
 class Technique:
     key: str
@@ -110,6 +119,7 @@ def _rule(title: str, detection: str, tags: List[str], category: str = "process_
             f"detection:\n  selection:\n{detection}\n  condition: selection\ntags:\n" + "".join(f"  - {t}\n" for t in tags))
 
 
+# [explain] The techniques measured. The rules are deliberately broad, the way an AI-written rule would be.
 TECHNIQUES: List[Technique] = [
     Technique("T1046", "Network service discovery: a netcat listener", "discovery",
               _rule("Netcat binary executed",
@@ -138,6 +148,7 @@ TECHNIQUES: List[Technique] = [
 ]
 
 
+# [explain] A tiny server that accepts connections and never replies, only to keep curl waiting.
 def start_helper_listener() -> tuple:
     """A tiny server that accepts connections and never replies (keeps curl alive). Returns (process, port)."""
     port = _free_port()
@@ -146,6 +157,7 @@ def start_helper_listener() -> tuple:
     return _spawn([sys.executable, "-c", code]), port
 
 
+# [explain] Stop an instance and all the processes it started.
 def stop(inst: Instance) -> None:
     import signal
     inst.stopped = True

@@ -1,5 +1,6 @@
 import api from './client'
 
+// [explain] One page of the hunt notebook as the screen receives it.
 export interface InvestigationStep {
   id: string
   investigation_id: string
@@ -65,11 +66,13 @@ export async function createInvestigation(body: {
   return data
 }
 
+// [explain] "What should we look at next?" (never runs anything).
 export async function proposeSteps(id: string): Promise<ProposeResult> {
   const { data } = await api.post(`/investigations/${id}/propose`)
   return data
 }
 
+// [explain] The analyst writes a rule step herself; the server checks it can run.
 export async function addRuleStep(
   id: string,
   body: { title: string; rationale?: string; sigma_rule: string },
@@ -78,16 +81,19 @@ export async function addRuleStep(
   return data
 }
 
+// [explain] THE yes: approving a step also runs it.
 export async function approveStep(id: string, stepId: string, comment?: string): Promise<InvestigationStep> {
   const { data } = await api.post(`/investigations/${id}/steps/${stepId}/approve`, { comment: comment || null })
   return data
 }
 
+// [explain] The no: the step is kept in the record but never runs.
 export async function rejectStep(id: string, stepId: string, comment?: string): Promise<InvestigationStep> {
   const { data } = await api.post(`/investigations/${id}/steps/${stepId}/reject`, { comment: comment || null })
   return data
 }
 
+// [explain] Close the notebook with a verdict and a conclusion (L2+).
 export async function concludeInvestigation(
   id: string,
   body: { verdict: string; conclusion: string },
@@ -97,6 +103,7 @@ export async function concludeInvestigation(
 }
 
 /** Download the PDF report or the Jupyter notebook of an investigation through the authenticated API. */
+// [explain] Downloads the PDF report or the notebook. It goes through the logged-in API call, makes a temporary link and clicks it.
 export async function downloadExport(id: string, kind: 'report' | 'notebook'): Promise<void> {
   const path = kind === 'report' ? `/investigations/${id}/report.pdf` : `/investigations/${id}/notebook`
   const response = await api.get(path, { responseType: 'blob' })

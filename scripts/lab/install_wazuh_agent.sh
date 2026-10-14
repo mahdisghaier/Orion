@@ -16,6 +16,7 @@ avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
 [ "$avail_mb" -ge "$MIN_FREE_MB" ] || { echo "Only ${avail_mb} MB RAM available. Free memory first."; exit 1; }
 
 # The agent must NOT be newer than the manager: take the version from the manager itself.
+# [explain] Ask the manager which version it is: the agent must never be newer than the manager.
 VER=$(docker exec "$MANAGER_CONTAINER" /var/ossec/bin/wazuh-control info 2>/dev/null \
       | sed -n 's/^WAZUH_VERSION="v\(.*\)"/\1/p')
 [ -n "$VER" ] || { echo "Cannot read the manager version from container $MANAGER_CONTAINER"; exit 1; }
@@ -35,6 +36,7 @@ if [ ! -f /etc/apt/sources.list.d/wazuh.list ]; then
   apt-get update
 fi
 
+# [explain] Find the exact package version that matches the manager. If it does not exist we stop and ask.
 PKGVER=$(apt-cache madison wazuh-agent | awk -F'|' '{gsub(/ /,"",$2); print $2}' | grep -m1 "^${VER}-" || true)
 if [ -z "$PKGVER" ]; then
   echo "wazuh-agent ${VER}-* is not available in the apt repo. Available versions:"
@@ -56,6 +58,7 @@ sed -i "s|<address>.*</address>|<address>$MANAGER_ADDR</address>|" /var/ossec/et
 # On Docker Desktop the published port 1515 can reset the TLS enrolment handshake even though
 # authd works inside the container. In that case create the agent through the manager container
 # and install the key locally (the key is never printed).
+# [explain] No key file means this agent is not registered with the manager yet: register it now.
 if [ ! -s /var/ossec/etc/client.keys ]; then
   if ! /var/ossec/bin/agent-auth -m "$MANAGER_ADDR" -A "$AGENT_NAME"; then
     echo "agent-auth failed; enrolling through the manager container instead"
@@ -80,6 +83,7 @@ if [ ! -s /var/ossec/etc/client.keys ]; then
 fi
 
 systemctl daemon-reload
+# [explain] Start the agent now and at every boot.
 systemctl enable --now wazuh-agent
 apt-mark hold wazuh-agent >/dev/null
 

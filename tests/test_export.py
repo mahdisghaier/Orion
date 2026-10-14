@@ -52,6 +52,7 @@ def pdf_text(pdf: bytes) -> str:
     return " ".join(re.findall(r"\((.*?)\) Tj", pdf.decode("latin-1")))
 
 
+# [explain] Checks the notebook export: valid structure, only approved steps replayed, no passwords, any rule text survives.
 class Notebook(unittest.TestCase):
     def test_structure(self):
         nb = build_notebook(data())
@@ -93,6 +94,7 @@ class Notebook(unittest.TestCase):
         self.assertIn("still open", "".join(nb["cells"][-1]["source"]))
 
 
+# [explain] Checks the PDF report: content, DRAFT stamp, hostile or non-Latin text, unknown coverage.
 class Report(unittest.TestCase):
     def test_concluded_report_content(self):
         pdf = build_report_pdf(data(), compress=False)
@@ -127,6 +129,7 @@ class Report(unittest.TestCase):
         self.assertEqual(slug("???"), "investigation")
 
 
+# [explain] Checks that similar past investigations are found by word overlap, and unrelated ones are not.
 class HuntLibrary(unittest.TestCase):
     def test_similar_hypotheses_rank_first(self):
         candidates = [

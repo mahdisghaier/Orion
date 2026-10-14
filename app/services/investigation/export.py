@@ -24,9 +24,11 @@ from app.models import HuntResult, Investigation, LLMAudit, SIEMConnection, SIEM
 from app.services.corroboration import enrich_findings
 from app.services.ecs import extract_mitre_from_tags
 
+# [explain] The report lists at most 15 behaviours, most important first, so it stays readable.
 MAX_REPORT_FINDINGS = 15
 
 
+# [explain] Everything a report or notebook needs, gathered once from the saved record (never from memory or the AI).
 @dataclass
 class ExportData:
     inv: Investigation
@@ -38,6 +40,7 @@ class ExportData:
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+# [explain] Reads who did what, which SIEMs and their check-ups, the best finding of each behaviour, and how much the AI was used.
 async def gather_export_data(db: AsyncSession, inv: Investigation) -> ExportData:
     data = ExportData(inv=inv)
 
@@ -130,6 +133,7 @@ def _outcome(step) -> str:
     return f"{r.get('count', 0)} related event(s) from {r.get('connection_name', '?')}, +/-{r.get('window_minutes', '?')} min."
 
 
+# [explain] The details a SIEM had NO recent data for: these go in the report as "could not see".
 def blind_fields(profile: Optional[dict]) -> List[str]:
     if not profile or not profile.get("recent_docs"):
         return []
@@ -155,6 +159,7 @@ def _code(text: str, tags: Optional[List[str]] = None) -> dict:
     return {"cell_type": "code", "metadata": meta, "execution_count": None, "outputs": [], "source": _lines(text)}
 
 
+# [explain] Writes any text (like a Sigma rule) as a safe Python string for the notebook, keeping YAML readable when possible.
 def _py_literal(text: str) -> str:
     """A Python literal for arbitrary text that keeps YAML readable when it can."""
     if "'''" not in text and not text.endswith("\\") and "\r" not in text:
@@ -188,6 +193,8 @@ def show(rows, columns, limit=20):
 '''
 
 
+# [explain] Writes the Jupyter notebook: a title, a parameters cell, a helper that logs in from environment variables,
+# [explain] and one cell per APPROVED step to replay it. Rejected or undecided steps are only described.
 def build_notebook(data: ExportData) -> dict:
     inv = data.inv
     cells: List[dict] = []
@@ -268,6 +275,8 @@ def _pdf_text(value) -> str:
     return text.encode("latin-1", "replace").decode("latin-1")
 
 
+# [explain] Draws the PDF: hypothesis and conclusion, what the SIEMs could and could not see, the timeline with who approved what,
+# [explain] the evidence, the roles of AI and analyst, and the limitations. An open investigation is stamped DRAFT.
 def build_report_pdf(data: ExportData, compress: bool = True) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_LEFT

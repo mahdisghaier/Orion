@@ -10,17 +10,20 @@ MIN_FREE_MB=800
 
 [ "$(id -u)" = 0 ] || { echo "Run with sudo: sudo bash $0"; exit 1; }
 
+# [explain] Refuse to install when the machine is almost out of memory.
 avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
 if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
   echo "Only ${avail_mb} MB RAM available (< ${MIN_FREE_MB}). Free memory first (stop containers you do not need)."
   exit 1
 fi
 
+# [explain] Ask Elasticsearch which version it is; Metricbeat must be the same version.
 cluster_ver=$(curl -fsS "$ES" | python3 -I -c 'import sys,json; print(json.load(sys.stdin)["version"]["number"])') \
   || { echo "Elasticsearch not reachable at $ES"; exit 1; }
 [ "$cluster_ver" = "$VER" ] || { echo "Cluster is $cluster_ver, script pins $VER. Aborting."; exit 1; }
 
 # --- apt repo + package -----------------------------------------------------
+# [explain] Add Elastic's package source, only the first time.
 if [ ! -f /etc/apt/sources.list.d/elastic-8.x.list ]; then
   apt-get install -y curl gpg apt-transport-https ca-certificates
   curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmor -o /usr/share/keyrings/elastic.gpg
@@ -34,6 +37,7 @@ if [ "$installed" != "$VER" ]; then
   apt-mark unhold metricbeat 2>/dev/null || true
   apt-get install -y "metricbeat=$VER"
 fi
+# [explain] Freeze the version so a routine system upgrade cannot change it.
 apt-mark hold metricbeat >/dev/null
 
 # --- refuse to reuse a data stream whose mapping is already wrong ------------
@@ -92,6 +96,7 @@ metricbeat test config -c /etc/metricbeat/metricbeat.yml
 
 # --- index template + ILM: MUST happen before the first event is shipped -----
 # Without the template, process.executable would be dynamically mapped as text and EQL breaks.
+# [explain] Prepares the Elasticsearch side first, so process.executable is stored as an exact text (keyword).
 metricbeat setup --index-management
 
 # ILM: roll over daily, delete after 3 days (saves disk)
@@ -115,6 +120,7 @@ sys.exit(0 if t=="keyword" else 1)' \
 mkdir -p /etc/systemd/system/metricbeat.service.d
 printf '[Service]\nMemoryMax=300M\n' > /etc/systemd/system/metricbeat.service.d/limits.conf
 systemctl daemon-reload
+# [explain] Start it now and at every boot.
 systemctl enable --now metricbeat
 
 echo "Waiting up to 90s for the first documents..."

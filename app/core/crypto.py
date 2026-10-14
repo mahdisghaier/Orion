@@ -16,9 +16,11 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
 
+# [explain] The lock. It is built from a secret key that lives in the .env file (never in git).
 _fernet = Fernet(settings.SIEM_ENCRYPTION_KEY.encode())
 
 
+# [explain] Put the SIEM address and password in a locked box before saving them in the database.
 def encrypt_config(config: dict[str, Any]) -> str:
     """Serialize a config dict to JSON, then encrypt it.
 
@@ -28,6 +30,7 @@ def encrypt_config(config: dict[str, Any]) -> str:
     return _fernet.encrypt(plaintext).decode("utf-8")
 
 
+# [explain] Open the box when we need to connect. If the box was changed, or the key is different, it refuses.
 def decrypt_config(encrypted: str) -> dict[str, Any]:
     """Decrypt an encrypted config string back into a dict.
 

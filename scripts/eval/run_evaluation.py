@@ -53,6 +53,7 @@ def log(message: str) -> None:
 
 # ── setup ─────────────────────────────────────────────────────────────────────────
 
+# [explain] Finds the SIEMs that received events recently. Archives (like the old demo index) are left out.
 async def live_connectors() -> list:
     """Active connections that have received events recently (archives are left out)."""
     live = []
@@ -71,6 +72,7 @@ async def live_connectors() -> list:
     return live
 
 
+# [explain] For each live SIEM: the translated query, or the reason the rule cannot run there.
 def compile_queries(technique, live: list) -> dict:
     """Per live SIEM: the native query, or why the rule cannot run there."""
     conversion = convert_sigma_rule(technique.rule)
@@ -89,6 +91,7 @@ def compile_queries(technique, live: list) -> dict:
     return out
 
 
+# [explain] Run the query on one SIEM for events since the start of the experiment.
 async def fetch(siem: dict, query: str, since: str) -> list:
     try:
         return await siem["connector"].run_query(query, max_results=1000, time_range={"from": since})
@@ -103,6 +106,8 @@ def blob(event: dict) -> str:
 
 # ── the experiment ────────────────────────────────────────────────────────────────
 
+# [explain] The experiment itself: start the activities on a schedule, poll every 15 s, note when each marked event first appears,
+# [explain] stop everything, and do one last check.
 async def run(args) -> dict:
     live = await live_connectors()
     if not live:
@@ -202,6 +207,7 @@ async def run(args) -> dict:
 
 # ── analysis ──────────────────────────────────────────────────────────────────────
 
+# [explain] Turns what was observed into numbers: detected/run, time to appear, noise, behaviours after grouping.
 def analyse(raw: dict) -> dict:
     out = {"techniques": [], "sources": [{"name": s["name"], "type": s["type"],
                                          "recent_events": s["profile"]["recent_docs"]} for s in raw["live"]]}
@@ -238,6 +244,8 @@ def analyse(raw: dict) -> dict:
     return out
 
 
+# [explain] Replays grouping, correlation and scoring on the events and asks: does the real scenario come first,
+# [explain] when sorted by newest and when sorted by priority?
 def ranking_replay(t, tactics, scoped, insts) -> dict:
     """Does the marked behaviour rank above the noise? Real grouping, correlation and scoring, offline."""
     if not scoped:
@@ -282,6 +290,7 @@ def cell(variant_res) -> str:
     return text
 
 
+# [explain] Writes the summary sentences straight from the numbers, so text and tables can never disagree.
 def summary_lines(analysis: dict) -> list:
     """What the numbers say, computed from them (so it can never drift from the tables below)."""
     by_siem = {}
@@ -312,6 +321,7 @@ def summary_lines(analysis: dict) -> list:
     return out
 
 
+# [explain] Writes docs/evaluation/RESULTS.md (for reading) and results.json (the raw numbers).
 def write_report(analysis: dict, meta: dict) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "results.json").write_text(json.dumps({"meta": meta, **analysis}, indent=1, default=str))
@@ -404,6 +414,7 @@ def write_report(analysis: dict, meta: dict) -> None:
     (OUT_DIR / "RESULTS.md").write_text("\n".join(lines))
 
 
+# [explain] Command line: choose techniques, include file changes, quick mode, or rebuild the report from saved results.
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", type=lambda v: v.split(","), default=None, help="comma-separated technique keys")

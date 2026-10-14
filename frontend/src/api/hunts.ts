@@ -33,6 +33,7 @@ export interface HuntCreate {
   hunt_type?: 'sigma' | 'kestrel'
 }
 
+// [explain] The list of searches (paged).
 export async function getHunts(filters: { page?: number; page_size?: number; status?: string } = {}): Promise<PaginatedHunts> {
   const params = new URLSearchParams()
   if (filters.page) params.append('page', String(filters.page))
@@ -42,16 +43,19 @@ export async function getHunts(filters: { page?: number; page_size?: number; sta
   return data
 }
 
+// [explain] One search.
 export async function getHunt(id: string): Promise<Hunt> {
   const { data } = await api.get(`/hunts/${id}`)
   return data
 }
 
+// [explain] The findings of one search.
 export async function getHuntResults(id: string): Promise<Finding[]> {
   const { data } = await api.get(`/hunts/${id}/results`)
   return data
 }
 
+// [explain] Start a search.
 export async function createHunt(payload: HuntCreate): Promise<Hunt> {
   const { data } = await api.post('/hunts/', payload)
   return data

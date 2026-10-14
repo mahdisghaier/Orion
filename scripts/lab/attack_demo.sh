@@ -15,8 +15,10 @@ NC_PATH=$(command -v nc || true)
 [ -n "$NC_PATH" ] || { echo "nc is not installed (sudo apt install netcat-openbsd)"; exit 1; }
 NC_REAL=$(readlink -f "$NC_PATH")
 
+# [explain] True when the recorded netcat process is still alive.
 running() { [ -s "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; }
 
+# [explain] Three modes: start the fake backdoor, stop it, or show what is going on.
 case "${1:-status}" in
   start)
     if running; then echo "already running, PID $(cat "$PIDFILE")"; exit 0; fi

@@ -14,9 +14,12 @@ from app.models import HuntResult, Investigation, SIEMConnection, SIEMProfile
 from app.services.corroboration import enrich_findings
 from app.services.data_profile import SIEM_FIELD_MAPS
 
+# [explain] The planner sees at most 8 findings, so the question stays short and cheap.
 MAX_FINDINGS = 8
 
 
+# [explain] Make any text safe to show the AI: one line, shortened, and unable to close the "untrusted data" fence.
+# [explain] Command lines come from attackers, so they are only ever treated as data.
 def clip(value, limit: int = 200):
     """One line, bounded, and unable to close the untrusted-data fence."""
     if value is None:
@@ -25,6 +28,7 @@ def clip(value, limit: int = 200):
     return text[:limit]
 
 
+# [explain] For every rule field, what percent of recent events carry it (0 = blind). This is how the AI learns what each SIEM can really answer.
 def sigma_field_availability(siem_type: str, profile: dict) -> Dict[str, object]:
     """Sigma field -> percent of recent events that carry it; None when never measured; 0 = blind spot."""
     out: Dict[str, object] = {}
@@ -36,6 +40,7 @@ def sigma_field_availability(siem_type: str, profile: dict) -> Dict[str, object]
     return out
 
 
+# [explain] The short card of a finding that the AI is allowed to read (no raw event dump).
 def finding_view(f: HuntResult) -> dict:
     return {
         "id": str(f.id),
@@ -55,6 +60,7 @@ def finding_view(f: HuntResult) -> dict:
     }
 
 
+# [explain] One sentence about how an earlier step ended, so the AI does not repeat it.
 def step_outcome(step) -> str:
     result = step.result or {}
     if step.status == "rejected":
@@ -79,6 +85,7 @@ def _tokens(text: str) -> set:
     return {w for w in re.findall(r"[a-z0-9_]{4,}", (text or "").lower()) if w not in _STOPWORDS}
 
 
+# [explain] Which old investigations look like this one? Plain word overlap (no magic), so the match can always be explained.
 def rank_similar(my_text: str, candidates: List[tuple], limit: int = 2) -> List[str]:
     """Ids of the candidates (id, text) most similar to my_text by word overlap (Jaccard), best first.
 
@@ -95,6 +102,8 @@ def rank_similar(my_text: str, candidates: List[tuple], limit: int = 2) -> List[
     return [cid for _, cid in sorted(scored, key=lambda x: x[0], reverse=True)[:limit]]
 
 
+# [explain] The hunt library: closed investigations about a similar hunch, with their verdict and what worked.
+# [explain] Only ones a human concluded, so the AI never learns from its own unreviewed guesses.
 async def similar_past_investigations(db: AsyncSession, inv: Investigation, limit: int = 2) -> List[dict]:
     """Concluded investigations (analyst-closed, with a verdict) about a similar hypothesis: the hunt library.
 
@@ -123,6 +132,8 @@ async def similar_past_investigations(db: AsyncSession, inv: Investigation, limi
     return out
 
 
+# [explain] Collects everything the planner may know: what each SIEM can see, the relevant findings, similar past cases,
+# [explain] and the steps already taken.
 async def build_context(db: AsyncSession, inv: Investigation) -> dict:
     connections = (await db.execute(
         select(SIEMConnection).where(SIEMConnection.id.in_(inv.siem_targets), SIEMConnection.is_active.is_(True))

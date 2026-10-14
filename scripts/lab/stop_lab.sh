@@ -6,6 +6,7 @@ set -uo pipefail
 
 [ "$(id -u)" = 0 ] || { echo "Run with sudo: sudo bash $0"; exit 1; }
 
+# [explain] Stop each agent if it is installed (the data already in the SIEMs stays).
 for svc in metricbeat wazuh-agent; do
   if systemctl list-unit-files "$svc.service" 2>/dev/null | grep -q "$svc"; then
     systemctl stop "$svc" && echo "stopped $svc"

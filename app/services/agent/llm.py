@@ -12,10 +12,13 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.core.config import settings
 
 
+# [explain] The AI could not answer (quota used up, wrong key, no network, nonsense reply).
 class LLMUnavailable(Exception):
     """The model service refused or could not answer (quota, auth, network, bad reply)."""
 
 
+# [explain] A tiny phone to talk to any AI service that speaks the "OpenAI chat" language (Groq, OpenRouter, Ollama...).
+# [explain] It never retries, so when the service says no we find out immediately.
 class OpenAICompatLLM:
     """Minimal client for any OpenAI-compatible /chat/completions endpoint.
 
@@ -59,6 +62,7 @@ class OpenAICompatLLM:
             raise LLMUnavailable(f"unexpected reply shape: {e}") from e
 
 
+# [explain] Which AI provider and model are really in use. It is written in the audit trail next to every call.
 def llm_identity() -> Tuple[str, str]:
     """(provider, model) actually in use, for the audit trail."""
     if settings.LLM_PROVIDER == "openai_compatible":
@@ -66,6 +70,8 @@ def llm_identity() -> Tuple[str, str]:
     return "google", settings.GEMINI_MODEL
 
 
+# [explain] Returns the AI client chosen in the settings (Gemini by default). Set to fail fast, because a student waiting
+# [explain] for minutes on a quota error is worse than a quick "AI unavailable".
 def get_llm():
     """The configured model client. Fails fast: a quota error must not leave an analyst waiting for minutes."""
     if settings.LLM_PROVIDER == "openai_compatible":
@@ -82,6 +88,7 @@ def get_llm():
     )
 
 
+# [explain] Asks the AI one question and also returns a record of it (question, answer, model, time) to be saved in llm_audit.
 def llm_call_with_audit(
     llm,
     prompt: str,
@@ -119,6 +126,7 @@ def llm_call_with_audit(
     return response_text, audit_entry
 
 
+# [explain] The AI often wraps its answer in a ```yaml block. This takes only what is inside it.
 def extract_yaml_from_response(text: str) -> str:
     """Extract YAML from an LLM response that may contain markdown code blocks."""
     # Common patterns:

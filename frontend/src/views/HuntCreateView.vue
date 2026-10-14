@@ -9,6 +9,7 @@
     </div>
 
     <div class="space-y-6">
+      <!-- [explain] Step 1: tick the SIEMs to ask. -->
       <!-- SIEM targets -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">1. Select SIEM Targets</h2>
@@ -32,6 +33,7 @@
         </div>
       </div>
 
+      <!-- [explain] Step 2: paste a Sigma rule. The server translates it for each SIEM. -->
       <!-- Sigma rule -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">2. Sigma Rule (YAML)</h2>
@@ -97,6 +99,7 @@ tags:
   - attack.discovery
   - attack.t1046`
 
+// [explain] Load the connected SIEMs so the analyst can tick which ones to ask.
 async function loadSIEMs() {
   try {
     siemConnections.value = await getSIEMConnections()
@@ -107,10 +110,12 @@ async function loadSIEMs() {
   }
 }
 
+// [explain] Fills the box with a ready-made Sigma rule to try.
 function loadExample() {
   ruleYaml.value = exampleRule
 }
 
+// [explain] Send the rule and the chosen SIEMs; on success show the new search.
 async function submitHunt() {
   error.value = ''
   saving.value = true

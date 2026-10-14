@@ -13,6 +13,7 @@ def factor(scored, name):
     return next(p for p in scored.breakdown if p["factor"] == name)
 
 
+# [explain] Each factor of the priority score, the caps, and that the breakdown always adds up to the total.
 class Scoring(unittest.TestCase):
     def test_breakdown_always_explains_the_total(self):
         s = score(Signals("elastic", other_sources=("wazuh",), tactics=("execution",), occurrence_count=64,

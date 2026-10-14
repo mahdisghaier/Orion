@@ -45,6 +45,8 @@ class ConfirmRequest(BaseModel):
     chat_history: List[Dict[str, str]] = []
 
 
+# [explain] The analyst talks to the AI. The AI understands the request and writes a Sigma rule,
+# [explain] then it STOPS and waits: nothing is searched until the analyst says yes (see confirm_hunt).
 @router.post("/message", response_model=ChatMessageResponse)
 async def send_message(
     request: ChatMessageRequest,
@@ -73,9 +75,11 @@ async def send_message(
             "error": None,
         }
         
+        # [explain] The agent is a small flowchart (understand, write rule). The graph runs it from start to the waiting point.
         result = await agent_graph.ainvoke(state)
         
         # Persist LLM audit entries
+        # [explain] Every question we asked the AI and every answer is saved in llm_audit, so a lead can check later what it said.
         for audit in result.get("llm_audit_entries", []):
             llm_entry = LLMAudit(
                 user_id=current_user.id,
@@ -116,6 +120,8 @@ async def send_message(
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
+# [explain] The analyst's answer to "shall I run this?". Yes = run the hunt and let the AI explain the results.
+# [explain] Known gap: the explanation's AI call is not saved to llm_audit here, only the /message route saves its calls.
 @router.post("/confirm", response_model=ChatMessageResponse)
 async def confirm_hunt(
     request: ConfirmRequest,
@@ -170,6 +176,7 @@ async def confirm_hunt(
         }
         
         # Run the hunt node directly (NOT the full graph)
+        # [explain] Skips the first two steps of the flowchart: the rule was already written and approved.
         state = await run_hunt(state)
         
         # If hunt succeeded, explain the findings

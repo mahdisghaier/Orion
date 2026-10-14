@@ -22,10 +22,13 @@ class HuntRunnerError(Exception):
     pass
 
 
+# [explain] The conductor of a search. One rule goes in; findings come out, already grouped, linked across SIEMs, scored and saved.
 class HuntRunner:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    # [explain] The whole story in 4 steps: (1) get the rule, (2) turn it into each SIEM's language,
+    # [explain] (3) write the hunt record, (4) run it. Errors are saved on the hunt so nothing disappears quietly.
     async def create_and_run(
         self,
         created_by: UUID,
@@ -101,6 +104,7 @@ class HuntRunner:
         await self.db.refresh(hunt)
         return hunt
 
+    # [explain] A pasted rule used to be forgotten. Now it is saved once (same text = same row), so every finding can be traced to the rule that found it.
     async def _save_inline_rule(self, rule_yaml, parsed, tags, mitre_tactics, mitre_techniques) -> Optional[UUID]:
         """Keep the exact rule a hunt ran, so every finding can be traced back to it.
 
@@ -135,6 +139,7 @@ class HuntRunner:
         await self.db.flush()
         return rule.id
 
+    # [explain] The actual search: ask every selected SIEM in parallel, then turn the answers into findings.
     async def _run_hunt(self, hunt: Hunt, rule_yaml: str, mitre_tactics: List[str], mitre_techniques: List[str]):
         hunt.status = "running"
         hunt.started_at = datetime.now(timezone.utc)
@@ -152,6 +157,7 @@ class HuntRunner:
         if not connections:
             raise HuntRunnerError("No active SIEM connections found for the given targets")
 
+        # [explain] Load each SIEM's latest check-up: it tells us which details the SIEM really records.
         profiles = {
             row.siem_connection_id: row.profile
             for row in (await self.db.execute(
@@ -180,6 +186,8 @@ class HuntRunner:
                 notes.append(f"{conn.name} ({connector.siem_type}): no query could be generated for this SIEM")
                 continue
 
+            # [explain] Check 1: does this SIEM have a field for everything the rule talks about? If not, say so and skip it
+            # [explain] (an answer of "nothing found" would be a lie).
             missing = unmapped_fields(rule_yaml, connector.siem_type)
             if missing:
                 notes.append(
@@ -188,6 +196,7 @@ class HuntRunner:
                 )
                 continue
 
+            # [explain] Check 2: the field exists in theory, but do recent events really carry it? If not, it is a blind spot: skip with a clear note.
             blind = blind_spots(used_fields, connector.siem_type, profiles.get(conn.id))
             if blind:
                 notes.append(
@@ -206,6 +215,7 @@ class HuntRunner:
             )
 
         # Run all queries in parallel
+        # [explain] Ask all SIEMs at the same time. If one fails it does not stop the others (return_exceptions).
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results + persist findings
@@ -228,6 +238,7 @@ class HuntRunner:
                 continue
 
             # Repeated samples of one behaviour become ONE finding with a count (grouping.py)
+            # [explain] Turn each raw event into the common shape (host, process, user...), then merge repeats into one finding with a counter.
             items = [(event, extract_ecs_fields(event)) for event in result]
             for group in group_events(siem_type, items):
                 finding = HuntResult(
@@ -249,6 +260,7 @@ class HuntRunner:
                 total_hits += 1
 
         # Same behaviour reported by different SIEMs -> shared correlation_id
+        # [explain] If two different SIEMs describe the same thing (same host, same process, close in time), give them a shared id.
         ids = correlate([
             Candidate(f.siem_type, f.host_name, f.process_name, f.first_seen, f.last_seen) for f in findings
         ])
@@ -273,6 +285,7 @@ class HuntRunner:
         await rescore_findings(self.db, findings)
 
         # Every SIEM that was queried failed: this is a failed hunt, not a clean one.
+        # [explain] If every SIEM we asked failed, the hunt failed: that is not the same as a clean result.
         hunt.status = "failed" if failed_queries == len(tasks) else "completed"
         hunt.completed_at = datetime.now(timezone.utc)
         hunt.total_hits = total_hits

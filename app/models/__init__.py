@@ -27,6 +27,7 @@ from app.core.database import Base
 # ─────────────────────────────────────────────────────────────────
 # 1. USERS & RBAC
 # ─────────────────────────────────────────────────────────────────
+# [explain] A person who can log in. The role (admin, soc_l1, soc_l2, soc_l3) decides what they may do.
 class User(Base):
     __tablename__ = "users"
 
@@ -64,6 +65,7 @@ class User(Base):
 # ─────────────────────────────────────────────────────────────────
 # 2. SIEM CONNECTIONS
 # ─────────────────────────────────────────────────────────────────
+# [explain] A SIEM ORION can ask (Elastic, Wazuh...). Its address and password are stored encrypted, never in clear text.
 class SIEMConnection(Base):
     __tablename__ = "siem_connections"
 
@@ -91,6 +93,7 @@ class SIEMConnection(Base):
 # ─────────────────────────────────────────────────────────────────
 # 3. SIGMA RULES (with lifecycle tracking)
 # ─────────────────────────────────────────────────────────────────
+# [explain] A hunting rule written in Sigma, the common language for detection rules. Every distinct rule that was hunted is kept here.
 class SigmaRule(Base):
     __tablename__ = "sigma_rules"
 
@@ -143,6 +146,7 @@ class SigmaRule(Base):
 # ─────────────────────────────────────────────────────────────────
 # 4. HUNTS
 # ─────────────────────────────────────────────────────────────────
+# [explain] One search: which rule, which SIEMs, the exact queries sent, the status, how many findings, and any problem.
 class Hunt(Base):
     __tablename__ = "hunts"
 
@@ -198,6 +202,7 @@ class Hunt(Base):
 # ─────────────────────────────────────────────────────────────────
 # 5. HUNT RESULTS / FINDINGS
 # ─────────────────────────────────────────────────────────────────
+# [explain] The hunt notebook: a hunch (hypothesis) and the steps taken to test it, with the final verdict.
 class Investigation(Base):
     """A hunt record: a hypothesis and the steps taken to test it, with who approved what and what came out."""
     __tablename__ = "investigations"
@@ -235,6 +240,7 @@ class Investigation(Base):
     )
 
 
+# [explain] One page of that notebook: a suggested step, who proposed it, who approved or rejected it, and what it found.
 class InvestigationStep(Base):
     """One proposed/approved/executed step of an investigation (a Sigma rule to hunt, or a pivot on a finding)."""
     __tablename__ = "investigation_steps"
@@ -277,6 +283,7 @@ class InvestigationStep(Base):
     investigation: Mapped["Investigation"] = relationship(back_populates="steps")
 
 
+# [explain] The latest check-up of a SIEM: how many events, how fresh, which details are really filled in.
 class SIEMProfile(Base):
     """Latest data profile of a SIEM connection (services/data_profile.py); one row per connection."""
     __tablename__ = "siem_profiles"
@@ -296,6 +303,7 @@ class SIEMProfile(Base):
     )
 
 
+# [explain] An analyst's decision: this behaviour is known to be harmless, hide it in future hunts (can be undone).
 class FindingSuppression(Base):
     """An analyst decision: this behaviour (fingerprint) is known benign, hide it in future hunts."""
     __tablename__ = "finding_suppressions"
@@ -318,6 +326,8 @@ class FindingSuppression(Base):
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+# [explain] A finding: one behaviour a hunt found. It keeps the event, the priority score and why, how many times it was seen,
+# [explain] whether other SIEMs saw it too, and what the analyst decided.
 class HuntResult(Base):
     __tablename__ = "hunt_results"
 
@@ -425,6 +435,7 @@ class HuntResult(Base):
 # ─────────────────────────────────────────────────────────────────
 # 6. INCIDENTS
 # ─────────────────────────────────────────────────────────────────
+# [explain] A confirmed problem that analysts follow up. Findings can be escalated into one.
 class Incident(Base):
     __tablename__ = "incidents"
 
@@ -465,6 +476,7 @@ class Incident(Base):
 # ─────────────────────────────────────────────────────────────────
 # 7. AUDIT LOG (general — every state-changing user action)
 # ─────────────────────────────────────────────────────────────────
+# [explain] The diary of who did what and when (logins, decisions, exports...).
 class AuditLog(Base):
     __tablename__ = "audit_log"
 
@@ -492,6 +504,7 @@ class AuditLog(Base):
 # ─────────────────────────────────────────────────────────────────
 # 8. LLM AUDIT (hallucination mitigation — every LLM call logged)
 # ─────────────────────────────────────────────────────────────────
+# [explain] The diary of every question asked to the AI and its answer, so its behaviour can be checked later.
 class LLMAudit(Base):
     __tablename__ = "llm_audit"
 
@@ -541,6 +554,7 @@ class LLMAudit(Base):
 # ─────────────────────────────────────────────────────────────────
 # 9. INTERVENTIONS (tiered lifecycle)
 # ─────────────────────────────────────────────────────────────────
+# [explain] A proposed response action (not built yet): ORION would only propose, never act alone.
 class Intervention(Base):
     __tablename__ = "interventions"
 
@@ -592,6 +606,7 @@ class Intervention(Base):
 # ─────────────────────────────────────────────────────────────────
 # 10. ANALYST FEEDBACK (TP/FP labels for calibration)
 # ─────────────────────────────────────────────────────────────────
+# [explain] Planned: true / false positive labels from analysts, to improve future hunts (not used yet).
 class AnalystFeedback(Base):
     __tablename__ = "analyst_feedback"
 
@@ -627,6 +642,7 @@ class AnalystFeedback(Base):
 # ─────────────────────────────────────────────────────────────────
 # 11. MITRE COVERAGE (technique coverage tracking)
 # ─────────────────────────────────────────────────────────────────
+# [explain] Planned: which attack techniques the hunts cover (not filled yet).
 class MITRECoverage(Base):
     __tablename__ = "mitre_coverage"
 

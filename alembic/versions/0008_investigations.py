@@ -12,6 +12,7 @@ UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB(astext_type=sa.Text())
 
 
+# [explain] Creates the hunt notebooks: investigations and their steps.
 def upgrade():
     op.create_table(
         "investigations",
@@ -72,6 +73,7 @@ def upgrade():
     op.create_index("idx_steps_investigation", "investigation_steps", ["investigation_id"], unique=False)
 
 
+# [explain] Drops them.
 def downgrade():
     op.drop_index("idx_steps_investigation", table_name="investigation_steps")
     op.drop_table("investigation_steps")

@@ -19,6 +19,7 @@ class ElasticConnectionError(Exception):
     pass
 
 
+# [explain] Talks to Elasticsearch over HTTP. Searches use EQL (Elastic's event query language).
 class ElasticConnector(BaseSIEMConnector):
     """Connector for Elasticsearch / Elastic Security.
 
@@ -43,12 +44,14 @@ class ElasticConnector(BaseSIEMConnector):
         self.api_key = api_key
         self.index_pattern = index_pattern
 
+    # [explain] The HTTP headers, with the API key if one is configured.
     def _headers(self) -> dict:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"ApiKey {self.api_key}"
         return headers
 
+    # [explain] Sends the EQL search and returns the events (the _source of every hit). Errors become ElasticConnectionError.
     async def run_query(
         self,
         query: str,
@@ -89,6 +92,7 @@ class ElasticConnector(BaseSIEMConnector):
 
         return [hit.get("_source", {}) for hit in hits]
 
+    # [explain] Asks the cluster for its health: reachable and answering = yes.
     async def test_connection(self) -> bool:
         """Health check — confirms the cluster is reachable and responsive."""
         try:
@@ -101,6 +105,7 @@ class ElasticConnector(BaseSIEMConnector):
         except httpx.RequestError:
             return False
 
+    # [explain] Builds a plain filter search (host, or process on the host, or user) inside a time window. Values go in as data, never as query text.
     async def fetch_context(
         self,
         kind: str,
@@ -142,6 +147,7 @@ class ElasticConnector(BaseSIEMConnector):
             raise ElasticConnectionError(f"Elastic connection failed: {e}") from e
         return [hit.get("_source", {}) for hit in response.json().get("hits", {}).get("hits", [])]
 
+    # [explain] One aggregation query: oldest/newest event, and for each field how many recent events have it.
     async def profile(self, window_days: int = 7) -> dict:
         fields = profile_fields(self.siem_type)
         body = {

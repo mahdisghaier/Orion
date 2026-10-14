@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional
 
+# [explain] How far apart in time two SIEMs may be and still count as "the same moment".
+# [explain] Metricbeat looks every 30 s but Wazuh's port check only every 6 minutes, so exact timing would never match.
 CORRELATION_TOLERANCE = timedelta(minutes=10)
 
 
@@ -37,6 +39,8 @@ def _overlap(a: Candidate, b: Candidate, tolerance: timedelta) -> bool:
     return a.first_seen - tolerance <= b.last_seen and b.first_seen - tolerance <= a.last_seen
 
 
+# [explain] Find findings from DIFFERENT SIEMs that describe the same host + process around the same time and give them one shared id.
+# [explain] If A matches B and B matches C, all three are one group (union-find). Missing host or process = never matched (we do not guess).
 def correlate(candidates: List[Candidate], tolerance: timedelta = CORRELATION_TOLERANCE) -> List[Optional[str]]:
     """One correlation id (or None) per candidate, in input order."""
     parent = list(range(len(candidates)))

@@ -22,6 +22,7 @@ from app.schemas import LoginRequest, RefreshRequest, Token, UserResponse
 router = APIRouter()
 
 
+# [explain] The front door. The user sends an email and a password; if they match, we hand back the tickets as cookies.
 @router.post("/login", response_model=Token)
 async def login(
     request: LoginRequest,
@@ -38,6 +39,8 @@ async def login(
     user = result.scalar_one_or_none()
 
     # 2. Verify password
+    # [explain] Wrong email and wrong password give the SAME answer on purpose,
+    # [explain] so nobody can find out which emails exist by trying them.
     if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -53,6 +56,8 @@ async def login(
     # 3. Create tokens
     access_token = create_access_token(str(user.id), user.role)
     refresh_token = create_refresh_token(str(user.id), user.role)
+    # [explain] Three cookies are handed out: the short ticket, the long ticket, and a random code the page echoes back
+    # [explain] on every change (the CSRF code) to prove the request really came from our own page.
     csrf_token = generate_csrf_token()
 
     # 4. Set cookies (httpOnly + SameSite=Strict)
@@ -67,6 +72,7 @@ async def login(
     )
 
 
+# [explain] The short ticket expired? Show the long ticket here and get a new short one without typing the password.
 @router.post("/refresh", response_model=Token)
 async def refresh(
     request: RefreshRequest,
@@ -104,6 +110,7 @@ async def refresh(
     )
 
 
+# [explain] Logging out = throwing the cookies away.
 @router.post("/logout")
 async def logout(response: Response):
     """Clear all auth cookies."""
@@ -113,6 +120,7 @@ async def logout(response: Response):
     return {"message": "Logged out"}
 
 
+# [explain] "Who am I?" The web page calls this at startup to know who is logged in and what they may do.
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     """Get current authenticated user info."""

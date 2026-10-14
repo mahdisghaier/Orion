@@ -1,5 +1,6 @@
 #!/bin/bash
 # Synthetic process events (tag: synthetic). Re-runnable.
+# [explain] Start from scratch: delete the old demo index, then recreate it and load 4 fake process events (tagged synthetic).
 curl -s -X DELETE localhost:9200/orion-process-demo > /dev/null
 curl -s -X PUT localhost:9200/orion-process-demo -H 'Content-Type: application/json' -d '{"mappings":{"properties":{"@timestamp":{"type":"date"},"tags":{"type":"keyword"},"event":{"properties":{"category":{"type":"keyword"},"action":{"type":"keyword"}}},"host":{"properties":{"name":{"type":"keyword"}}},"user":{"properties":{"name":{"type":"keyword"}}},"process":{"properties":{"name":{"type":"keyword"},"executable":{"type":"keyword"},"command_line":{"type":"keyword"},"pid":{"type":"long"},"parent":{"properties":{"pid":{"type":"long"},"executable":{"type":"keyword"}}}}}}}}'
 echo

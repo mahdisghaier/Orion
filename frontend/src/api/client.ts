@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+// [explain] One shared phone line to the backend. Every call starts with /api, and the login cookie is sent automatically (withCredentials).
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
@@ -8,6 +9,7 @@ const api = axios.create({
   },
 })
 
+// [explain] A safety net on every answer: if the server says 401 (the ticket expired), send the user back to the login page.
 api.interceptors.response.use(
   (response) => response,
   (error) => {

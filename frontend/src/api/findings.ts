@@ -1,5 +1,6 @@
 import api from './client'
 
+// [explain] A finding as the screen receives it, including the priority score and why, repeats, who else saw it and suppression.
 export interface Finding {
   id: string
   hunt_id: string
@@ -56,6 +57,7 @@ export interface FindingFilters {
   hunt_id?: string
 }
 
+// [explain] The main list; the filters become query parameters (SIEM, status, corroborated, sort, show repeats / suppressed...).
 export async function getFindings(filters: FindingFilters = {}): Promise<PaginatedFindings> {
   const params = new URLSearchParams()
   if (filters.page) params.append('page', String(filters.page))
@@ -74,11 +76,13 @@ export async function getFindings(filters: FindingFilters = {}): Promise<Paginat
   return data
 }
 
+// [explain] One finding in full.
 export async function getFinding(id: string): Promise<Finding> {
   const { data } = await api.get(`/findings/${id}`)
   return data
 }
 
+// [explain] Validate, mark false positive, or comment (L2+).
 export async function updateFinding(
   id: string,
   update: { analyst_status?: string; analyst_comment?: string }
@@ -87,6 +91,7 @@ export async function updateFinding(
   return data
 }
 
+// [explain] Turn a finding into an incident (L2+).
 export async function escalateFinding(
   id: string,
   escalate: { incident_id?: string; new_incident_title?: string; new_incident_severity?: string }
@@ -120,6 +125,7 @@ export interface FindingContext {
   events: ContextEvent[]
 }
 
+// [explain] The "Related events" panel: events around the finding in its own SIEM.
 export async function getFindingContext(
   id: string,
   pivot: 'host' | 'process' | 'user',
@@ -129,11 +135,13 @@ export async function getFindingContext(
   return data
 }
 
+// [explain] "Known benign, hide it from now on" (L2+, reversible).
 export async function suppressFinding(id: string, comment: string): Promise<{ suppression_id: string; affected: number }> {
   const { data } = await api.post(`/findings/${id}/suppress`, { comment: comment || null })
   return data
 }
 
+// [explain] Take the suppression back.
 export async function unsuppressFinding(id: string): Promise<{ suppression_id: string; affected: number }> {
   const { data } = await api.delete(`/findings/${id}/suppress`)
   return data

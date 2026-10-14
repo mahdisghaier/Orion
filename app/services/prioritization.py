@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Hunt, HuntResult, SigmaRule
 from app.services.ecs import get_nested
 
+# [explain] All the points live here in one place, so they are easy to explain, change and defend.
 WEIGHTS = {
     "corroboration": 25,
     "new": 15,
@@ -38,6 +39,8 @@ WEIGHTS = {
 
 # MITRE tactic -> severity points. Follows the intervention tier table of the design
 # (Tier 1* = credential access, lateral movement, C2, exfiltration; Tier 3 = recon, discovery).
+# [explain] How worrying each stage of an attack is (from the design's tier table): stealing passwords or phoning home counts most,
+# [explain] looking around counts least.
 TACTIC_POINTS = {
     "credential_access": 25, "lateral_movement": 25, "command_and_control": 25, "exfiltration": 25,
     "initial_access": 18, "execution": 18, "persistence": 18, "privilege_escalation": 18,
@@ -52,6 +55,7 @@ def normalize_tactic(name: str) -> str:
     return str(name).strip().lower().replace("-", "_").replace(" ", "_")
 
 
+# [explain] Everything the score looks at, filled in from the database. Plain facts, no opinion.
 @dataclass
 class Signals:
     siem_type: str
@@ -78,6 +82,8 @@ def _tier(points: int) -> str:
     return {25: "Tier 1", 18: "Tier 2", 8: "Tier 3"}.get(points, "no tier")
 
 
+# [explain] Adds up the points factor by factor and keeps the reason for every line, so the analyst can see WHY the number is what it is.
+# [explain] It is plain arithmetic: the AI never touches it.
 def score(signals: Signals) -> Scored:
     parts: List[dict] = []
 
@@ -146,6 +152,7 @@ def score(signals: Signals) -> Scored:
 
 # ── persistence: computing signals from the database ─────────────────────────────
 
+# [explain] For each behaviour: in how many hunts it appeared, since when, and what analysts decided about it.
 async def fingerprint_stats(db: AsyncSession, fingerprints: Iterable[str]) -> Dict[str, dict]:
     """Per fingerprint: distinct hunts, earliest sighting, and analyst decisions across all copies."""
     fingerprints = {f for f in fingerprints if f}
@@ -166,6 +173,7 @@ async def fingerprint_stats(db: AsyncSession, fingerprints: Iterable[str]) -> Di
             for fp, hunts, since, validated, fps in rows}
 
 
+# [explain] Gathers the facts for each finding (other SIEMs, tactic, history, decisions) and stores the score with its reasons.
 async def rescore_findings(db: AsyncSession, findings: Iterable[HuntResult]) -> None:
     """Compute and store priority_score / priority_breakdown for each finding (batched queries)."""
     findings = list(findings)
@@ -221,6 +229,7 @@ async def rescore_findings(db: AsyncSession, findings: Iterable[HuntResult]) -> 
         f.priority_breakdown = result.breakdown
 
 
+# [explain] An analyst decision changes the evidence for EVERY copy of that behaviour, so all copies are rescored.
 async def rescore_fingerprint(db: AsyncSession, fingerprint: Optional[str]) -> int:
     """Recompute every finding sharing a fingerprint (an analyst decision changes them all)."""
     if not fingerprint:

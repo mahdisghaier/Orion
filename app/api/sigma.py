@@ -12,6 +12,8 @@ from app.services.sigma_engine import convert_sigma_rule
 router = APIRouter()
 
 
+# [explain] Preview only: turns a Sigma rule into the query languages without searching anything.
+# [explain] Handy to see why a rule behaves strangely before running it for real.
 @router.post("/convert", response_model=SigmaConvertResponse)
 async def convert_rule(
     payload: SigmaConvertRequest,

@@ -7,6 +7,7 @@ from .state import ChatState
 from .llm import get_llm, llm_call_with_audit, extract_yaml_from_response
 
 
+# [explain] Step 1: ask the AI to restate, in one short sentence, what the analyst wants to hunt for.
 async def understand_intent(state: ChatState) -> ChatState:
     """Parse what the analyst wants from their natural language message."""
     user_message = state["user_message"]
@@ -29,6 +30,8 @@ async def understand_intent(state: ChatState) -> ChatState:
     return state
 
 
+# [explain] Step 2: ask the AI to write a Sigma rule for that. It is told to keep it broad (match on the program name only).
+# [explain] If the answer is not valid YAML, a safe fallback rule is used. Then it stops and waits for the analyst.
 async def generate_sigma(state: ChatState) -> ChatState:
     """Generate a Sigma rule YAML based on the analyst's intent."""
     intent = state["intent"]
@@ -51,6 +54,7 @@ async def generate_sigma(state: ChatState) -> ChatState:
     return state
 
 
+# [explain] Step 3 (only after the analyst said yes): run the search through HuntRunner and keep the top findings, without the suppressed ones.
 async def run_hunt(state: ChatState) -> ChatState:
     """Execute the hunt using the HuntRunner service."""
     from app.services.hunt_runner import HuntRunner
@@ -84,6 +88,8 @@ async def run_hunt(state: ChatState) -> ChatState:
     return state
 
 
+# [explain] Step 4: ask the AI to explain the findings in plain words, using the priority score and its reasons.
+# [explain] The AI may explain the ranking but must never change it.
 async def explain_findings(state: ChatState) -> ChatState:
     """Analyze the findings + explain them to the analyst."""
     findings = state.get("findings", [])

@@ -21,6 +21,8 @@ from app.models import HuntResult  # noqa: E402
 from app.services.prioritization import rescore_findings  # noqa: E402
 
 
+# [explain] Recalculate every finding's priority score (and its reasons) from the stored evidence.
+# [explain] Without --apply it only reports what would change.
 async def main(apply: bool) -> None:
     logging.disable(logging.CRITICAL)
     async with async_session() as db:

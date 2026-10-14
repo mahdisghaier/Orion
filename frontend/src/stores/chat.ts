@@ -2,12 +2,14 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { sendMessage as apiSendMessage, confirmHunt, type ChatMessage, type ChatFinding } from '@/api/chat'
 
+// [explain] Keeps the chat conversation in memory even when the analyst moves to another page and back.
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
   const pendingSigmaRule = ref<string | null>(null)
   const lastFindings = ref<ChatFinding[]>([])
   const loading = ref(false)
 
+  // [explain] Add the analyst's message, ask the AI, and remember the rule it proposes (waiting for a yes).
   async function sendMessage(message: string, siemTargets: string[]) {
     messages.value.push({ role: 'user', content: message })
     loading.value = true
@@ -24,6 +26,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  // [explain] The analyst said yes: run the pending rule and show the findings in the chat.
   async function approve(siemTargets: string[]) {
     if (!pendingSigmaRule.value) return
     loading.value = true
@@ -53,11 +56,13 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  // [explain] The analyst said no: forget the pending rule.
   function reject() {
     pendingSigmaRule.value = null
     messages.value.push({ role: 'assistant', content: 'Okay, I won\'t run that hunt. What would you like to hunt for instead?' })
   }
 
+  // [explain] Start a fresh conversation.
   function clear() {
     messages.value = []
     pendingSigmaRule.value = null

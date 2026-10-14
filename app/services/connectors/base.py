@@ -9,11 +9,13 @@ from datetime import datetime
 from typing import List, Optional
 
 
+# [explain] The plug every SIEM must fit. To add a new SIEM you write one file that fills in these slots.
 class BaseSIEMConnector(ABC):
     """Uniform interface every SIEM connector implements."""
 
     siem_type: str  # 'sentinel' | 'elastic' | 'wazuh'
 
+    # [explain] Run the translated search and return events in the common shape.
     @abstractmethod
     async def run_query(
         self,
@@ -28,11 +30,13 @@ class BaseSIEMConnector(ABC):
         """
         ...
 
+    # [explain] "Can I reach you and log in?" Yes or no.
     @abstractmethod
     async def test_connection(self) -> bool:
         """Health check used by admin UI / SIEM connection testing."""
         ...
 
+    # [explain] Events around a finding for the "Related events" button (fixed questions only).
     async def fetch_context(
         self,
         kind: str,
@@ -50,6 +54,7 @@ class BaseSIEMConnector(ABC):
         """
         raise NotImplementedError(f"{self.siem_type} connector does not support context pivots")
 
+    # [explain] Measure what this SIEM really holds (counts, freshness, which fields are filled).
     async def profile(self, window_days: int = 7) -> dict:
         """Read-only: what this SIEM holds (volume, time coverage, field population, event kinds).
 

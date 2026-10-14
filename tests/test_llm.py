@@ -23,6 +23,7 @@ def client(handler, **kw):
     return OpenAICompatLLM("http://llm.local/v1/", "tiny-model", "k3y", transport=httpx.MockTransport(handler), **kw)
 
 
+# [explain] The generic AI client fails fast and reports every kind of error.
 class OpenAICompat(unittest.TestCase):
     def test_request_shape_and_reply(self):
         seen = {}
@@ -75,6 +76,7 @@ class OpenAICompat(unittest.TestCase):
             client(handler).invoke([HumanMessage(content="x")])
 
 
+# [explain] The settings choose the right provider.
 class Selection(unittest.TestCase):
     def test_provider_selection_and_identity(self):
         s = llm_module.settings
@@ -92,6 +94,7 @@ class Selection(unittest.TestCase):
             s.LLM_PROVIDER, s.LLM_BASE_URL, s.LLM_MODEL = old
 
 
+# [explain] A slow AI is cut off and the rule-based suggestions are returned.
 class PlannerNeverHangs(unittest.IsolatedAsyncioTestCase):
     async def test_a_slow_model_is_cut_off_and_the_fallback_is_returned(self):
         def slow(prompt, system, name):

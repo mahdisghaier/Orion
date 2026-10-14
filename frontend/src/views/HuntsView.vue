@@ -25,6 +25,7 @@
       </RouterLink>
     </div>
 
+    <!-- [explain] The list of searches: when, how many findings, which SIEMs, and a link to the details. -->
     <!-- Hunts table -->
     <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <table class="w-full text-sm">
@@ -85,6 +86,7 @@ const hasNext = ref(false)
 const page = ref(1)
 const pageSize = 20
 
+// [explain] Fetch the current page of searches from the server.
 async function loadHunts() {
   loading.value = true
   try {
@@ -99,6 +101,7 @@ async function loadHunts() {
   }
 }
 
+// [explain] Pagination buttons: change the page number and reload.
 function nextPage() {
   if (hasNext.value) { page.value++; loadHunts() }
 }
@@ -110,6 +113,7 @@ function formatTime(ts: string): string {
   return new Date(ts).toLocaleString()
 }
 
+// [explain] The colour of the status badge (green = completed, red = failed...).
 function statusClass(status: string): string {
   const map: Record<string, string> = {
     pending: 'bg-gray-100 text-gray-800',

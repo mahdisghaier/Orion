@@ -39,6 +39,7 @@
         <strong>Error:</strong> {{ hunt.error }}
       </div>
 
+      <!-- [explain] The exact queries ORION sent to each SIEM (translated from the one Sigma rule). -->
       <!-- Queries -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">Generated Queries</h2>
@@ -67,6 +68,7 @@
         </div>
       </div>
 
+      <!-- [explain] What the search found, highest priority first. -->
       <!-- Results -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">Findings ({{ results.length }})</h2>
@@ -122,6 +124,7 @@ const hunt = ref<Hunt | null>(null)
 const results = ref<Finding[]>([])
 const loading = ref(true)
 
+// [explain] Fetch the search and its findings.
 async function loadHunt() {
   loading.value = true
   try {
