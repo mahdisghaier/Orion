@@ -25,6 +25,17 @@
             {{ inv.status }}<template v-if="inv.verdict"> &middot; {{ inv.verdict.replace('_', ' ') }}</template>
           </span>
         </div>
+        <div class="mt-4 pt-4 border-t flex flex-wrap items-center gap-2">
+          <button @click="exportAs('report')" :disabled="exporting" class="px-3 py-1.5 border rounded text-sm hover:bg-gray-50 disabled:opacity-50">
+            Download report (PDF)
+          </button>
+          <button @click="exportAs('notebook')" :disabled="exporting" class="px-3 py-1.5 border rounded text-sm hover:bg-gray-50 disabled:opacity-50">
+            Download notebook (.ipynb)
+          </button>
+          <span v-if="inv.status === 'open'" class="text-xs text-amber-700">The investigation is still open: exports are marked DRAFT.</span>
+          <span v-else class="text-xs text-gray-500">Built from this record only; no credentials inside.</span>
+        </div>
+        <p v-if="exportError" class="mt-2 text-sm text-red-600">{{ exportError }}</p>
         <div v-if="inv.status === 'concluded'" class="mt-4 pt-4 border-t text-sm">
           <p class="text-xs uppercase text-gray-500">Conclusion</p>
           <p class="mt-1">{{ inv.conclusion }}</p>
@@ -171,7 +182,7 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
-  getInvestigation, proposeSteps, addRuleStep, approveStep, rejectStep, concludeInvestigation,
+  getInvestigation, proposeSteps, addRuleStep, approveStep, rejectStep, concludeInvestigation, downloadExport,
   type Investigation, type InvestigationStep,
 } from '@/api/investigations'
 
@@ -183,6 +194,8 @@ const inv = ref<Investigation | null>(null)
 const loading = ref(true)
 const loadError = ref('')
 const proposing = ref(false)
+const exporting = ref(false)
+const exportError = ref('')
 const actionError = ref('')
 const notes = ref<string[]>([])
 const rejected = ref<{ title: string; reason: string }[]>([])
@@ -221,6 +234,18 @@ async function propose() {
     actionError.value = e.response?.data?.detail || 'Could not propose steps'
   } finally {
     proposing.value = false
+  }
+}
+
+async function exportAs(kind: 'report' | 'notebook') {
+  exporting.value = true
+  exportError.value = ''
+  try {
+    await downloadExport(id, kind)
+  } catch (e: any) {
+    exportError.value = 'Export failed: ' + (e.response?.status ? `HTTP ${e.response.status}` : 'the backend did not answer')
+  } finally {
+    exporting.value = false
   }
 }
 

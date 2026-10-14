@@ -13,11 +13,15 @@ reports and notebooks.
 - POST /api/investigations/{id}/steps/{sid}/approve   approve AND run a proposed step
 - POST /api/investigations/{id}/steps/{sid}/reject    reject a proposed step
 - POST /api/investigations/{id}/conclude         verdict + conclusion (L2+)
+- GET  /api/investigations/{id}/report.pdf       PDF report of the hunt record (a DRAFT while open)
+- GET  /api/investigations/{id}/notebook         Jupyter notebook that replays the steps through ORION's API
 """
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -34,6 +38,7 @@ from app.schemas import (
 )
 from app.services.investigation.context import build_context
 from app.services.investigation.executor import execute_step
+from app.services.investigation.export import build_notebook, build_report_pdf, gather_export_data, slug
 from app.services.investigation.proposer import assess_rule, propose_steps, step_signature
 
 router = APIRouter()
@@ -303,3 +308,41 @@ async def conclude(
     )
     await db.commit()
     return await _load(db, inv.id)
+
+
+async def _audited_export(db: AsyncSession, request: Request, user: User, inv: Investigation, kind: str) -> None:
+    await log_action(
+        db, user_id=user.id, action="investigation.export", target_type="investigation", target_id=inv.id,
+        metadata={"kind": kind, "status": inv.status}, request=request,
+    )
+    await db.commit()
+
+
+@router.get("/{investigation_id}/report.pdf")
+async def export_report(
+    investigation_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """PDF report built only from the stored hunt record. An open investigation exports as a DRAFT."""
+    inv = await _load(db, investigation_id)
+    pdf = build_report_pdf(await gather_export_data(db, inv))
+    await _audited_export(db, request, current_user, inv, "report")
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{slug(inv.title)}-report.pdf"'})
+
+
+@router.get("/{investigation_id}/notebook")
+async def export_notebook(
+    investigation_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Jupyter notebook replaying the executed steps through ORION's API. Contains no credentials."""
+    inv = await _load(db, investigation_id)
+    notebook = build_notebook(await gather_export_data(db, inv))
+    await _audited_export(db, request, current_user, inv, "notebook")
+    return Response(json.dumps(notebook, indent=1, ensure_ascii=False), media_type="application/x-ipynb+json",
+                    headers={"Content-Disposition": f'attachment; filename="{slug(inv.title)}.ipynb"'})

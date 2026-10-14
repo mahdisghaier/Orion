@@ -95,3 +95,20 @@ export async function concludeInvestigation(
   const { data } = await api.post(`/investigations/${id}/conclude`, body)
   return data
 }
+
+/** Download the PDF report or the Jupyter notebook of an investigation through the authenticated API. */
+export async function downloadExport(id: string, kind: 'report' | 'notebook'): Promise<void> {
+  const path = kind === 'report' ? `/investigations/${id}/report.pdf` : `/investigations/${id}/notebook`
+  const response = await api.get(path, { responseType: 'blob' })
+  const disposition: string = response.headers['content-disposition'] || ''
+  const match = /filename="?([^";]+)"?/.exec(disposition)
+  const filename = match ? match[1] : kind === 'report' ? 'investigation-report.pdf' : 'investigation.ipynb'
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}

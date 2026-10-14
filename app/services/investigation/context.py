@@ -8,6 +8,7 @@ from typing import Dict, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import HuntResult, Investigation, SIEMConnection, SIEMProfile
 from app.services.corroboration import enrich_findings
@@ -67,6 +68,61 @@ def step_outcome(step) -> str:
     return step.status
 
 
+_STOPWORDS = {
+    "this", "that", "with", "from", "have", "which", "there", "their", "might", "could", "would", "should",
+    "were", "been", "into", "about", "after", "before", "other", "some", "host", "found", "since", "when",
+}
+MIN_SIMILARITY = 0.12
+
+
+def _tokens(text: str) -> set:
+    return {w for w in re.findall(r"[a-z0-9_]{4,}", (text or "").lower()) if w not in _STOPWORDS}
+
+
+def rank_similar(my_text: str, candidates: List[tuple], limit: int = 2) -> List[str]:
+    """Ids of the candidates (id, text) most similar to my_text by word overlap (Jaccard), best first.
+
+    Deliberately simple and explainable: no embeddings, so a result can always be justified by the shared words.
+    """
+    mine = _tokens(my_text)
+    scored = []
+    for cid, text in candidates:
+        theirs = _tokens(text)
+        union = mine | theirs
+        score = len(mine & theirs) / len(union) if union else 0.0
+        if score >= MIN_SIMILARITY:
+            scored.append((score, cid))
+    return [cid for _, cid in sorted(scored, key=lambda x: x[0], reverse=True)[:limit]]
+
+
+async def similar_past_investigations(db: AsyncSession, inv: Investigation, limit: int = 2) -> List[dict]:
+    """Concluded investigations (analyst-closed, with a verdict) about a similar hypothesis: the hunt library.
+
+    Only investigations a human concluded are offered, so unreviewed AI output is never fed back to the model.
+    """
+    rows = (await db.execute(
+        select(Investigation).options(selectinload(Investigation.steps))
+        .where(Investigation.status == "concluded", Investigation.id != inv.id)
+        .order_by(Investigation.concluded_at.desc()).limit(50)
+    )).scalars().all()
+    by_id = {str(r.id): r for r in rows}
+    best = rank_similar(f"{inv.title} {inv.hypothesis}", [(str(r.id), f"{r.title} {r.hypothesis}") for r in rows], limit)
+    out = []
+    for rid in best:
+        past = by_id[rid]
+        executed = [s for s in past.steps if s.status == "executed"]
+        rule = next((s for s in executed if s.kind == "rule"), None)
+        out.append({
+            "title": clip(past.title, 120),
+            "hypothesis": clip(past.hypothesis, 300),
+            "verdict": past.verdict,
+            "conclusion": clip(past.conclusion, 400),
+            "steps_that_ran": [clip(s.title, 100) for s in executed[:4]],
+            "rule_that_ran": clip(rule.payload.get("sigma_rule"), 700) if rule else None,
+        })
+    return out
+
+
 async def build_context(db: AsyncSession, inv: Investigation) -> dict:
     connections = (await db.execute(
         select(SIEMConnection).where(SIEMConnection.id.in_(inv.siem_targets), SIEMConnection.is_active.is_(True))
@@ -117,6 +173,7 @@ async def build_context(db: AsyncSession, inv: Investigation) -> dict:
     return {
         "siems": siems,
         "findings": [finding_view(f) for f in findings],
+        "past_investigations": await similar_past_investigations(db, inv),
         "steps_so_far": [
             {"seq": s.seq, "kind": s.kind, "title": clip(s.title, 120), "status": s.status, "outcome": step_outcome(s)}
             for s in inv.steps
