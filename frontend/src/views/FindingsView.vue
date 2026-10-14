@@ -53,7 +53,12 @@
             :key="finding.id"
             class="border-t border-gray-200 hover:bg-gray-50"
           >
-            <td class="px-4 py-3 text-gray-600">{{ formatTime(finding.event_time) }}</td>
+            <td class="px-4 py-3 text-gray-600">
+              {{ formatTime(finding.last_seen || finding.event_time) }}
+              <div v-if="finding.occurrence_count > 1" class="text-xs text-gray-500 mt-1">
+                seen {{ finding.occurrence_count }}&times; since {{ formatTime(finding.first_seen || finding.event_time) }}
+              </div>
+            </td>
             <td class="px-4 py-3">
               <span :class="siemBadge(finding.siem_type)" class="px-2 py-0.5 rounded text-xs font-medium">
                 {{ finding.siem_type }}

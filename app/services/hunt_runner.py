@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Hunt, HuntResult, SIEMConnection, SigmaRule
 from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
+from app.services.grouping import group_events
 from app.services.sigma_engine import convert_sigma_rule, unmapped_fields
 
 
@@ -168,17 +169,22 @@ class HuntRunner:
                 failed_queries += 1
                 continue
 
-            for raw_event in result:
-                ecs_fields = extract_ecs_fields(raw_event)
+            # Repeated samples of one behaviour become ONE finding with a count (grouping.py)
+            items = [(event, extract_ecs_fields(event)) for event in result]
+            for group in group_events(siem_type, items):
                 finding = HuntResult(
                     hunt_id=hunt.id,
                     siem_connection_id=conn.id,
                     siem_type=siem_type,
-                    ecs_event=raw_event,
-                    raw_event=raw_event,
+                    ecs_event=group.event,
+                    raw_event=group.event,
+                    fingerprint=group.fingerprint,
+                    occurrence_count=group.count,
+                    first_seen=group.first_seen,
+                    last_seen=group.last_seen,
                     mitre_techniques=mitre_techniques if mitre_techniques else None,
                     mitre_mapping_source="explicit",
-                    **ecs_fields,
+                    **group.fields,
                 )
                 self.db.add(finding)
                 total_hits += 1

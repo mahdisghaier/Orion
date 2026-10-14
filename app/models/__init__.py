@@ -222,6 +222,13 @@ class HuntResult(Base):
     process_command_line: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     action: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Grouping: repeated samples of the same behaviour are one finding (see services/grouping.py).
+    # event_time / ecs_event describe the most recent occurrence.
+    fingerprint: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    occurrence_count: Mapped[int] = mapped_column(Integer, server_default="1", nullable=False)
+    first_seen: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Full ECS event (flexible, for display + AI analysis)
     ecs_event: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
@@ -260,6 +267,7 @@ class HuntResult(Base):
             name="ck_results_mitre_src"
         ),
         Index("idx_results_hunt", "hunt_id"),
+        Index("idx_results_fingerprint", "fingerprint"),
         Index("idx_results_time_desc", "event_time", postgresql_ops={"event_time": "DESC"}),
         Index("idx_results_siem", "siem_type"),
         Index("idx_results_status", "analyst_status"),

@@ -184,6 +184,9 @@ class HuntResultResponse(BaseModel):
     process_name: Optional[str] = None
     process_command_line: Optional[str] = None
     action: Optional[str] = None
+    occurrence_count: int = 1
+    first_seen: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
     ecs_event: dict
     mitre_techniques: Optional[List[str]] = None
     mitre_mapping_source: str

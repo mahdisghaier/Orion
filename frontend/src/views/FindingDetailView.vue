@@ -48,7 +48,10 @@
         </div>
         <div class="bg-white border rounded-lg p-4">
           <p class="text-xs uppercase text-gray-500 mb-1">Event Time</p>
-          <p>{{ formatTime(finding.event_time) }}</p>
+          <p>{{ formatTime(finding.last_seen || finding.event_time) }}</p>
+          <p v-if="finding.occurrence_count > 1" class="text-xs text-gray-500 mt-1">
+            seen {{ finding.occurrence_count }}&times; since {{ formatTime(finding.first_seen || finding.event_time) }}
+          </p>
         </div>
         <div class="bg-white border rounded-lg p-4">
           <p class="text-xs uppercase text-gray-500 mb-1">MITRE Techniques</p>

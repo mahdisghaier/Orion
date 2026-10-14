@@ -16,6 +16,9 @@ export interface Finding {
   mitre_techniques: string[] | null
   mitre_mapping_source: string
   analyst_status: 'new' | 'validated' | 'false_positive' | 'escalated'
+  occurrence_count: number
+  first_seen: string | null
+  last_seen: string | null
   analyst_comment: string | null
   reviewed_by: string | null
   reviewed_at: string | null
