@@ -1,0 +1,27 @@
+# Direct dependencies only: the packages the code imports. requirements.txt is the full resolved set,
+# produced from this file in a clean environment (see docs/THREAT_MODEL.md, section 6).
+alembic
+asyncpg
+bcrypt==4.0.1                       # passlib 1.7.4 reads bcrypt's version string; newer bcrypt releases break it
+cryptography
+email-validator
+fastapi
+httpx
+langchain-core
+langchain-google-genai
+langgraph
+numpy                               # scripts/eval/learn_priority.py only
+passlib
+pillow
+pydantic
+pydantic-settings
+pyparsing==3.1.4                    # pinned on purpose: newer versions break pySigma's condition parser
+pySigma==0.11.11
+pySigma-backend-elasticsearch==1.1.4
+pySigma-backend-kusto==0.4.5
+python-dateutil
+PyJWT
+PyYAML
+reportlab
+SQLAlchemy[asyncio]
+uvicorn[standard]

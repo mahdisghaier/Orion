@@ -167,11 +167,12 @@ _HELPERS = '''import os, json, httpx
 client = httpx.Client(base_url=ORION_URL, timeout=120)
 login = client.post("/api/auth/login", json={"email": os.environ["ORION_EMAIL"], "password": os.environ["ORION_PASSWORD"]})
 login.raise_for_status()
+CSRF = {"X-CSRF-Token": client.cookies.get("csrf_token", "")}     # state-changing calls must repeat the CSRF cookie
 
 
 def orion(method, path, **kwargs):
     """Call ORION's API. The SIEMs are only ever queried by ORION, read-only."""
-    response = client.request(method, path, **kwargs)
+    response = client.request(method, path, headers=CSRF if method.upper() not in ("GET", "HEAD") else None, **kwargs)
     if response.status_code >= 400:
         detail = response.json().get("detail", response.text) if response.headers.get("content-type", "").startswith("application/json") else response.text
         raise RuntimeError(f"{response.status_code}: {detail}")

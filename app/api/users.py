@@ -7,10 +7,11 @@
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import require_admin
 from app.core.security import hash_password
@@ -23,6 +24,7 @@ router = APIRouter()
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     payload: UserCreate,
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -39,6 +41,9 @@ async def create_user(
         is_active=True,
     )
     db.add(user)
+    await db.flush()
+    await log_action(db, user_id=current_user.id, action="user.create", target_type="user", target_id=user.id,
+                     metadata={"email": user.email, "role": user.role}, request=request)
     await db.commit()
     await db.refresh(user)
     return user
@@ -72,6 +77,7 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     payload: UserUpdate,
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -85,6 +91,10 @@ async def update_user(
     for field, value in update_data.items():
         setattr(user, field, value)
 
+    # the audit line records WHAT changed (field names and role/active values), never a password
+    await log_action(db, user_id=current_user.id, action="user.update", target_type="user", target_id=user.id,
+                     metadata={k: v for k, v in update_data.items() if k in ("role", "is_active", "full_name")}
+                              | {"fields": sorted(update_data)}, request=request)
     await db.commit()
     await db.refresh(user)
     return user

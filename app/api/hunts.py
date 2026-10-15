@@ -1,10 +1,11 @@
 """Hunts API — create, run, list, and inspect hunts."""
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models import Hunt, HuntResult, User
@@ -18,6 +19,7 @@ router = APIRouter()
 @router.post("/", response_model=HuntResponse, status_code=status.HTTP_201_CREATED)
 async def create_hunt(
     hunt_data: HuntCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -42,6 +44,10 @@ async def create_hunt(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Hunt failed: {e}")
 
+    await log_action(db, user_id=current_user.id, action="hunt.create", target_type="hunt", target_id=hunt.id,
+                     metadata={"status": hunt.status, "findings": hunt.total_hits, "siems": len(hunt.siem_targets),
+                               "from_saved_rule": bool(hunt_data.rule_id)}, request=request)
+    await db.commit()
     return hunt
 
 

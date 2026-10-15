@@ -10,7 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.audit import log_action
 from app.core.deps import get_current_user
+from app.core.login_guard import login_guard
 from app.core.security import (
     create_access_token, create_refresh_token, decode_token,
     generate_csrf_token, verify_password,
@@ -26,6 +28,7 @@ router = APIRouter()
 async def login(
     request: LoginRequest,
     response: Response,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate and set JWT cookies.
@@ -33,12 +36,26 @@ async def login(
     Returns token metadata in the body (without the actual token,
     which lives in the httpOnly cookie for security).
     """
+    address = http_request.client.host if http_request.client else "unknown"
+    wait = login_guard.retry_after(request.email, address)
+    if wait:
+        await log_action(db, user_id=None, action="auth.login_blocked", metadata={"email": request.email[:200]}, request=http_request)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed attempts. Try again later.",
+            headers={"Retry-After": str(wait)},
+        )
+
     # 1. Find user by email
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
 
     # 2. Verify password
     if not user or not verify_password(request.password, user.password_hash):
+        login_guard.failure(request.email, address)
+        await log_action(db, user_id=None, action="auth.login_failed", metadata={"email": request.email[:200]}, request=http_request)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -49,6 +66,10 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is disabled",
         )
+
+    login_guard.success(request.email)
+    await log_action(db, user_id=user.id, action="auth.login", target_type="user", target_id=user.id, request=http_request)
+    await db.commit()
 
     # 3. Create tokens
     access_token = create_access_token(str(user.id), user.role)

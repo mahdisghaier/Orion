@@ -61,6 +61,27 @@ class OpenAICompatLLM:
 
 
 _TRY_NEXT_MODEL = {"ResourceExhausted", "NotFound", "ServiceUnavailable"}
+_TRY_NEXT_HTTP_CODES = {429, 404, 503}      # quota, model missing, overloaded: what the newer client reports as a bare code
+
+
+def should_try_next_model(error: Exception) -> bool:
+    """Older clients raise ResourceExhausted / NotFound / ServiceUnavailable; newer ones wrap everything in one class
+    that carries the HTTP status in `.code`."""
+    if type(error).__name__ in _TRY_NEXT_MODEL:
+        return True
+    code = getattr(error, "code", None) or getattr(error, "status_code", None)
+    return code in _TRY_NEXT_HTTP_CODES
+
+
+def reply_text(reply) -> str:
+    """The text of a model reply. Older clients return a string; newer ones return a list of content blocks."""
+    content = getattr(reply, "content", reply)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(part if isinstance(part, str) else part.get("text", "") for part in content
+                       if isinstance(part, str) or (isinstance(part, dict) and part.get("type", "text") == "text"))
+    return str(content)
 _COOLDOWN_SECONDS = 30 * 60
 _exhausted_until: Dict[str, float] = {}      # model -> time before which we do not even try it
 
@@ -83,7 +104,7 @@ class GeminiFallbackLLM:
             try:
                 reply = client.invoke(messages)
             except Exception as e:
-                if type(e).__name__ not in _TRY_NEXT_MODEL:
+                if not should_try_next_model(e):
                     raise
                 _exhausted_until[model] = time.monotonic() + _COOLDOWN_SECONDS
                 last_error = e
@@ -136,7 +157,7 @@ def llm_call_with_audit(
     messages.append(HumanMessage(content=prompt))
     
     response = llm.invoke(messages)
-    response_text = response.content
+    response_text = reply_text(response)
     
     provider, model = llm_identity()
     model = getattr(llm, "last_model", None) or model       # the model that really answered (fallback chain)

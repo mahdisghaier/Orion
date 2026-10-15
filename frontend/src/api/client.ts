@@ -8,6 +8,16 @@ const api = axios.create({
   },
 })
 
+// Double-submit CSRF: repeat the csrf_token cookie in a header on every call that changes something.
+api.interceptors.request.use((config) => {
+  const method = (config.method || 'get').toLowerCase()
+  if (!['get', 'head', 'options'].includes(method)) {
+    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
+    if (match) config.headers.set('X-CSRF-Token', decodeURIComponent(match[1]))
+  }
+  return config
+})
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {

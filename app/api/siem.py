@@ -11,10 +11,11 @@
 import time
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import log_action
 from app.core.crypto import encrypt_config
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
@@ -28,6 +29,7 @@ router = APIRouter()
 @router.post("/", response_model=SIEMConnectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_siem_connection(
     payload: SIEMConnectionCreate,
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -47,6 +49,10 @@ async def create_siem_connection(
         is_active=True,
     )
     db.add(connection)
+    await db.flush()
+    # name and type only: the config holds secrets and is never written to the audit log
+    await log_action(db, user_id=current_user.id, action="siem.create", target_type="siem_connection", target_id=connection.id,
+                     metadata={"name": payload.name, "type": payload.type}, request=request)
     await db.commit()
     await db.refresh(connection)
     return connection
@@ -106,6 +112,7 @@ async def test_siem_connection(
 @router.post("/{connection_id}/profile", response_model=SIEMProfileResponse)
 async def collect_siem_profile(
     connection_id: UUID,
+    request: Request,
     window_days: int = Query(7, ge=1, le=90, description="days of recent data used for field population"),
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -139,6 +146,8 @@ async def collect_siem_profile(
     row.profile = profile
     row.collected_by = current_user.id
     row.collected_at = func.now()
+    await log_action(db, user_id=current_user.id, action="siem.profile", target_type="siem_connection", target_id=connection_id,
+                     metadata={"window_days": window_days}, request=request)
     await db.commit()
     await db.refresh(row)
     return row
@@ -162,6 +171,7 @@ async def get_siem_profile(
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deactivate_siem_connection(
     connection_id: UUID,
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -176,4 +186,6 @@ async def deactivate_siem_connection(
         raise HTTPException(status_code=404, detail="SIEM connection not found")
 
     connection.is_active = False
+    await log_action(db, user_id=current_user.id, action="siem.deactivate", target_type="siem_connection", target_id=connection_id,
+                     metadata={"name": connection.name}, request=request)
     await db.commit()

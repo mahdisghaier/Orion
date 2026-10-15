@@ -174,6 +174,50 @@ class GeminiFallback(unittest.TestCase):
         self.assertEqual(audit["model"], "b")
 
 
+class NewerClientShapes(unittest.TestCase):
+    """The newer Gemini client reports errors as a bare HTTP code and returns replies as content blocks."""
+
+    def test_reply_text_handles_strings_and_blocks(self):
+        self.assertEqual(llm_module.reply_text(NS(content="plain")), "plain")
+        blocks = [{"type": "text", "text": "ab"}, {"type": "thinking", "text": "hidden"}, {"type": "text", "text": "cd"}, "ef"]
+        self.assertEqual(llm_module.reply_text(NS(content=blocks)), "abcdef")
+        self.assertEqual(llm_module.reply_text(NS(content=[])), "")
+
+    def test_errors_carrying_an_http_code_move_to_the_next_model(self):
+        for code, expected in ((429, True), (503, True), (404, True), (400, False), (401, False), (500, False)):
+            error = type("GoogleAPIError", (Exception,), {})("x")
+            error.code = code
+            self.assertEqual(llm_module.should_try_next_model(error), expected, code)
+        self.assertTrue(llm_module.should_try_next_model(type("ResourceExhausted", (Exception,), {})("x")))
+        self.assertFalse(llm_module.should_try_next_model(ValueError("a bug of ours")))
+
+    def test_the_chain_moves_on_for_a_coded_overload_error(self):
+        calls = []
+
+        class Fake:
+            def __init__(self, model, **kwargs):
+                self.model = model
+
+            def invoke(self, messages):
+                calls.append(self.model)
+                if self.model == "busy":
+                    error = type("GoogleAPIError", (Exception,), {})("503 UNAVAILABLE")
+                    error.code = 503
+                    raise error
+                return NS(content=[{"type": "text", "text": "ok"}])
+
+        real = llm_module.ChatGoogleGenerativeAI
+        llm_module.ChatGoogleGenerativeAI = Fake
+        llm_module._exhausted_until.clear()
+        try:
+            llm = llm_module.GeminiFallbackLLM(["busy", "free"], "k", 0.3, 5)
+            self.assertEqual(llm_module.reply_text(llm.invoke([HumanMessage(content="x")])), "ok")
+            self.assertEqual(calls, ["busy", "free"])
+        finally:
+            llm_module.ChatGoogleGenerativeAI = real
+            llm_module._exhausted_until.clear()
+
+
 class PlannerNeverHangs(unittest.IsolatedAsyncioTestCase):
     async def test_a_slow_model_is_cut_off_and_the_fallback_is_returned(self):
         def slow(prompt, system, name):

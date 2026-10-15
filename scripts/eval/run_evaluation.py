@@ -39,7 +39,7 @@ from app.services.correlation import Candidate, correlate  # noqa: E402
 from app.services.data_profile import blind_spots  # noqa: E402
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags, get_nested  # noqa: E402
 from app.services.grouping import group_events  # noqa: E402
-from app.services.prioritization import Signals, score  # noqa: E402
+from app.services.prioritization import DEFAULT_TACTIC_POINTS, TACTIC_POINTS, Signals, score  # noqa: E402
 from app.services.sigma_engine import convert_sigma_rule, rule_fields, unmapped_fields  # noqa: E402
 from scripts.eval import techniques as tech  # noqa: E402
 
@@ -255,9 +255,22 @@ def ranking_replay(t, tactics, scoped, insts) -> dict:
             derived=bool(get_nested(g.event, "orion.derived_from")), has_process=bool(g.fields.get("process_name")),
         ))
         is_tp = any(i.matches(blob(g.event)) for i in insts)
-        rows.append({"tp": is_tp, "score": result.score, "last": g.last_seen})
+        rows.append({
+            "tp": is_tp, "score": result.score, "last": g.last_seen,
+            # numbers only (no host, user or command text): what a learned model may look at
+            "features": {
+                "occurrences": g.count, "span_minutes": round(span, 2), "other_sources": len(others),
+                "tactic_points": TACTIC_POINTS.get(tactics[0], DEFAULT_TACTIC_POINTS) if tactics else DEFAULT_TACTIC_POINTS,
+                "event_level": get_nested(g.event, "event.severity") or 0,
+                "derived": int(bool(get_nested(g.event, "orion.derived_from"))),
+                "has_process": int(bool(g.fields.get("process_name"))),
+                "is_wazuh": int(stype == "wazuh"),
+            },
+        })
+    dataset_rows = [{"siem": scoped[i][0], "label": int(r["tp"]), "score": r["score"], "last_ts": r["last"].timestamp(),
+                     "features": r["features"]} for i, r in enumerate(rows)]
     if not any(r["tp"] for r in rows):
-        return {"measured": True, "behaviours": len(rows), "true_positives": 0}
+        return {"measured": True, "behaviours": len(rows), "true_positives": 0, "dataset_rows": dataset_rows}
 
     def precision_at(order, k):
         top = order[:k]
@@ -267,7 +280,8 @@ def ranking_replay(t, tactics, scoped, insts) -> dict:
     by_time = sorted(rows, key=lambda r: r["last"], reverse=True)
     return {"measured": True, "behaviours": len(rows), "true_positives": sum(r["tp"] for r in rows),
             "p_at_1": {"by_time": precision_at(by_time, 1), "by_priority": precision_at(by_score, 1)},
-            "p_at_3": {"by_time": precision_at(by_time, 3), "by_priority": precision_at(by_score, 3)}}
+            "p_at_3": {"by_time": precision_at(by_time, 3), "by_priority": precision_at(by_score, 3)},
+            "dataset_rows": dataset_rows}
 
 
 # ── report ────────────────────────────────────────────────────────────────────────
@@ -416,6 +430,7 @@ def main() -> None:
     parser.add_argument("--short-repeats", type=int, default=30)
     parser.add_argument("--short-gap", type=int, default=3, help="seconds between short-lived instances")
     parser.add_argument("--max-wait", type=int, default=None)
+    parser.add_argument("--no-report", action="store_true", help="only save the labelled dataset; leave RESULTS.md and results.json alone")
     parser.add_argument("--merge", action="store_true", help="add or replace only the techniques of this run in the existing results.json")
     parser.add_argument("--from-json", action="store_true", help="rebuild RESULTS.md from the saved results.json (no experiment)")
     args = parser.parse_args()
@@ -439,6 +454,17 @@ def main() -> None:
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     meta = {"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "commit": commit or "unknown",
             "platform": platform.platform(), "python": platform.python_version(), "run_id": raw["run_id"]}
+    dataset = [{"technique": t["key"], **row} for t in analysis["techniques"] for row in t["ranking"].get("dataset_rows", [])]
+    for t in analysis["techniques"]:
+        t["ranking"].pop("dataset_rows", None)
+    if dataset:
+        (OUT_DIR / "datasets").mkdir(parents=True, exist_ok=True)
+        path = OUT_DIR / "datasets" / f"run-{raw['run_id']}.json"
+        path.write_text(json.dumps({"meta": meta, "rows": dataset}, indent=1))
+        log(f"labelled dataset: {path.name} ({len(dataset)} behaviours, {sum(r['label'] for r in dataset)} true positives)")
+    if args.no_report:
+        log("report not rewritten (--no-report)")
+        return
     write_report(analysis, meta)
     log(f"written: {OUT_DIR / 'RESULTS.md'}")
 

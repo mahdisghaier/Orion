@@ -1,9 +1,11 @@
 """FastAPI application entry point."""
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.csrf import csrf_ok
 from app.core.database import engine
 from app.api import auth, users, siem, hunts, findings, chat, sigma, investigations
 
@@ -32,6 +34,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def csrf_guard(request: Request, call_next):
+    if not csrf_ok(request.method, request.url.path, request.cookies, request.headers):
+        return JSONResponse({"detail": "CSRF check failed: missing or wrong X-CSRF-Token"}, status_code=403)
+    return await call_next(request)
+
 
 # Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

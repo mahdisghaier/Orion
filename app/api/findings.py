@@ -65,12 +65,19 @@ async def list_findings(
         conds.append(HuntResult.correlation_id.is_not(None) if corroborated else HuntResult.correlation_id.is_(None))
 
     if collapse_repeats and not hunt_id:
-        latest_per_behaviour = (
-            select(HuntResult.id)
+        # newest finding of each fingerprint, by ranking the copies of a behaviour and keeping rank 1
+        ranked = (
+            select(
+                HuntResult.id.label("id"),
+                func.row_number().over(
+                    partition_by=HuntResult.fingerprint,
+                    order_by=[HuntResult.event_time.desc(), HuntResult.created_at.desc()],
+                ).label("rank"),
+            )
             .where(HuntResult.fingerprint.is_not(None), *conds)
-            .distinct(HuntResult.fingerprint)
-            .order_by(HuntResult.fingerprint, HuntResult.event_time.desc(), HuntResult.created_at.desc())
+            .subquery()
         )
+        latest_per_behaviour = select(ranked.c.id).where(ranked.c.rank == 1)
         conds.append(or_(HuntResult.fingerprint.is_(None), HuntResult.id.in_(latest_per_behaviour)))
 
     query = select(HuntResult).where(*conds)
