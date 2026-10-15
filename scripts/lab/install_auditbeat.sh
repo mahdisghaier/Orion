@@ -52,17 +52,17 @@ apt-mark hold auditbeat >/dev/null
 # --- configuration ------------------------------------------------------------
 [ -f /etc/auditbeat/auditbeat.yml.orig ] || cp /etc/auditbeat/auditbeat.yml /etc/auditbeat/auditbeat.yml.orig
 
-cat > /etc/auditbeat/auditbeat.yml <<'EOF'
-auditbeat.modules:
-  - module: auditd
+AUDITD_BLOCK='  - module: auditd
     audit_rules: |
       -a always,exit -F arch=b64 -S execve,execveat -k exec
       -a always,exit -F arch=b32 -S execve,execveat -k exec
-  - module: system
+'
+SOCKET_BLOCK='  - module: system
     datasets:
       - socket
     socket.include_localhost: false
-
+'
+TAIL_BLOCK='
 setup.template.settings:
   index.number_of_shards: 1
   index.number_of_replicas: 0     # single node: avoids a permanently yellow cluster
@@ -73,7 +73,7 @@ output.elasticsearch:
 
 processors:
   - add_host_metadata: ~
-  # the auditd module stores the arguments as a list; ORION's rules read the joined command line
+  # the auditd module stores the arguments as a list; ORION rules read the joined command line
   - script:
       lang: javascript
       source: |
@@ -83,10 +83,22 @@ processors:
         }
 
 logging.level: warning
-EOF
-chown root:root /etc/auditbeat/auditbeat.yml
-chmod 600 /etc/auditbeat/auditbeat.yml
-auditbeat test config -c /etc/auditbeat/auditbeat.yml
+'
+write_config() {   # $1 = module blocks
+  printf 'auditbeat.modules:\n%s%s' "$1" "$TAIL_BLOCK" > /etc/auditbeat/auditbeat.yml
+  chown root:root /etc/auditbeat/auditbeat.yml
+  chmod 600 /etc/auditbeat/auditbeat.yml
+}
+
+# WSL2 and some containers refuse the audit control socket ("operation not permitted"). Then keep only the
+# network dataset and say clearly that process starts are still seen by polling only.
+write_config "$AUDITD_BLOCK$SOCKET_BLOCK"
+if ! auditbeat test config -c /etc/auditbeat/auditbeat.yml; then
+  echo
+  echo "The audit module is refused here (typical for WSL2). Falling back to network connections only."
+  write_config "$SOCKET_BLOCK"
+  auditbeat test config -c /etc/auditbeat/auditbeat.yml
+fi
 
 # --- template + ILM before the first event, so field types are right ----------
 auditbeat setup --index-management
