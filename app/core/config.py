@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     LLM_MODEL: Optional[str] = None
     LLM_TIMEOUT_SECONDS: float = 45.0
 
+    # Background scheduler for recurring jobs (one API process only, see app/services/scheduler.py)
+    SCHEDULER_ENABLED: bool = True
+
     # Gemini's free tier counts requests PER MODEL per day (20 for gemini-3.6-flash), so when the main model is out
     # the client moves on to these, in order. Comma separated. Empty = no fallback.
     GEMINI_FALLBACK_MODELS: str = "gemini-3.7-flash,gemini-flash-latest,gemini-3.1-flash-lite"

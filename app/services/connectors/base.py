@@ -57,3 +57,14 @@ class BaseSIEMConnector(ABC):
         See services/data_profile.py. Connectors that cannot profile keep the default.
         """
         raise NotImplementedError(f"{self.siem_type} connector does not support profiling")
+
+    async def match_iocs(self, kind: str, values: List[str], start: datetime, end: datetime, max_results: int = 200) -> List[dict]:
+        """Read-only: events in the window whose indicator fields contain any of the values (kind: ip, domain, sha256).
+
+        Values are sent as data (a terms filter), never as query text. Returns ECS-shaped events.
+        """
+        raise NotImplementedError(f"{self.siem_type} connector does not support indicator matching")
+
+    async def find_vulnerabilities(self, cves: List[str], max_results: int = 200) -> List[dict]:
+        """Read-only: vulnerability records this SIEM already holds for the given CVE ids (host, package, version)."""
+        raise NotImplementedError(f"{self.siem_type} connector holds no vulnerability data")

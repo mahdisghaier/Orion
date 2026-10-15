@@ -18,8 +18,9 @@ SIEM_FIELD_MAPS: Dict[str, dict] = {
 
 # Fields profiled beyond those a Sigma mapping targets (context for analysts and the AI agent)
 _EXTRA_FIELDS = {
-    "elastic": ["process.name", "event.action", "source.ip", "destination.ip"],
-    "wazuh": ["data.dstuser", "rule.id", "rule.level", "rule.mitre.id"],
+    "elastic": ["process.name", "event.action", "source.ip", "destination.ip", "dns.question.name", "url.domain",
+                "destination.domain", "file.hash.sha256", "process.hash.sha256"],
+    "wazuh": ["data.dstuser", "rule.id", "rule.level", "rule.mitre.id", "syscheck.sha256_after"],
 }
 
 # What "kinds of events" means per SIEM: the field to count top values of
@@ -79,3 +80,16 @@ def blind_spots(sigma_fields: Iterable[str], siem_type: str, profile: Optional[d
         if targets and len(stats) == len(targets) and all(s["present"] == 0 for s in stats):
             blind.append(f"{sigma_field} -> {' / '.join(targets)}")
     return blind
+
+
+def unmeasured_fields(sigma_fields: Iterable[str], siem_type: str, profile: Optional[dict]) -> List[str]:
+    """SIEM fields a rule needs that the stored profile never measured (a profile taken before the field was mapped)."""
+    if not profile:
+        return []
+    measured = profile.get("fields", {})
+    missing = []
+    for sigma_field in sorted(set(sigma_fields)):
+        for target in _targets(sigma_field, siem_type):
+            if target not in measured:
+                missing.append(target)
+    return missing

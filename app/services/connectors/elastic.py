@@ -12,6 +12,7 @@ import httpx
 
 from app.services.connectors.base import BaseSIEMConnector
 from app.services.data_profile import build_profile, profile_fields
+from app.services.threat_intel.iocs import fields_for
 
 
 class ElasticConnectionError(Exception):
@@ -181,3 +182,26 @@ class ElasticConnector(BaseSIEMConnector):
             field_counts={f: aggs["recent"][f"f{i}"]["doc_count"] for i, f in enumerate(fields)},
             top=[(b["key"], b["doc_count"]) for b in aggs["recent"]["top"]["buckets"]],
         )
+
+    async def match_iocs(self, kind: str, values: List[str], start: datetime, end: datetime, max_results: int = 200) -> List[dict]:
+        fields = fields_for(kind, self.siem_type)
+        if not fields or not values:
+            return []
+        body = {
+            "size": min(max_results, 500),
+            "sort": [{"@timestamp": "desc"}],
+            "query": {"bool": {
+                "filter": [{"range": {"@timestamp": {"gte": start.isoformat(), "lte": end.isoformat()}}}],
+                "should": [{"terms": {field: values[:1000]}} for field in fields],
+                "minimum_should_match": 1,
+            }},
+        }
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(f"{self.cluster_url}/{self.index_pattern}/_search", json=body, headers=self._headers())
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise ElasticConnectionError(f"Elastic indicator query failed ({e.response.status_code}): {e.response.text[:300]}") from e
+        except httpx.RequestError as e:
+            raise ElasticConnectionError(f"Elastic connection failed: {e}") from e
+        return [hit.get("_source", {}) for hit in response.json().get("hits", {}).get("hits", [])]

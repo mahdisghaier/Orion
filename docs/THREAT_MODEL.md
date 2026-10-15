@@ -51,6 +51,9 @@ remain are listed as such in section 5.
 | I5 | Errors revealing internals | Most errors return a short message | | Some 500 responses include the exception text (for example the chat routes); should be generic in production |
 | D1 | Overloading the SIEMs with heavy queries | Hunts return at most 1000 events per SIEM, pivots also cap their time window, all queries are read-only, and a hunt that fails on a SIEM reports it | `app/services/connectors/*` | A hunt without a time range searches the whole index; no per-user quotas or rate limits on hunts; a wildcard-heavy rule can still be costly |
 | D2 | Hanging the server through a slow AI call | The AI call runs in a worker thread, is cut off after 60 seconds, and falls back to rule-based suggestions | `tests/test_llm.py` (PlannerNeverHangs) | Hunts run inside the request: a very long hunt occupies a worker |
+| D3 | Feed download abused (SSRF, oversized or hostile content) | Only four fixed feed URLs are ever fetched (allow-list in code, no user-supplied address); size and age limits; every indicator is validated (public IPs only, well-formed domains and hashes) before use; indicators reach the SIEMs only as term filters | `tests/test_feeds.py` | Feed content is third-party data; a poisoned feed could cause false matches or noise, never code execution |
+| D4 | Scheduled job overloading the SIEMs or running twice | One run per job at a time, a global lock, a 14-day cap on the look-back window, the same read-only capped queries as manual hunts | `tests/test_scheduler.py` | Scheduler runs inside the API process: with several workers each would run it (see section 5) |
+| I6 | A "clear" verdict giving false comfort | A run is never "clear" without listing what could not be checked (rules missing, indicators no SIEM carries, empty vulnerability index); unreachable SIEMs or required feeds make it "incomplete" | `tests/test_threat_intel.py` | The list is only as good as the data profile of each SIEM |
 | E1 | An analyst acting above their role | `require_role` dependencies; L1 cannot suppress, escalate, conclude or manage anything | `tests/test_security.py` (RoleMatrix, mutation-checked) | L1 may approve and run steps by design: they are read-only queries |
 | E2 | A stolen non-admin account reaching SIEM secrets | Admin-only endpoints; the API never returns a connection's config | `tests/test_security.py` | |
 
@@ -70,7 +73,8 @@ remain are listed as such in section 5.
 6. **No pseudonymisation before the AI provider.**
 7. **Development defaults**: CORS allows localhost, cookies are not Secure, and the seed script creates demo accounts.
    None of these may be used in production.
-8. **Single process assumptions**: the login throttle keeps its counters in memory.
+8. **Single process assumptions**: the login throttle keeps its counters in memory, and the job scheduler runs inside
+   the API process (a second worker would start a second scheduler).
 
 ## 6. Dependency hygiene
 

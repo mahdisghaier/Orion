@@ -12,6 +12,7 @@ import httpx
 from app.services.connectors.base import BaseSIEMConnector
 from app.services.connectors.wazuh_ecs import query_process_names, wazuh_to_ecs_events
 from app.services.data_profile import TOP_FIELD, build_profile, profile_fields
+from app.services.threat_intel.iocs import VULNERABILITY_FIELD, VULNERABILITY_INDEX, fields_for
 
 _MAX_WINDOW = 1000
 
@@ -206,3 +207,65 @@ class WazuhConnector(BaseSIEMConnector):
             field_counts={f: aggs["recent"][f"f{i}"]["doc_count"] for i, f in enumerate(fields)},
             top=[(b["key"], b["doc_count"]) for b in aggs["recent"]["top"]["buckets"]],
         )
+
+    async def match_iocs(self, kind: str, values: List[str], start: datetime, end: datetime, max_results: int = 200) -> List[dict]:
+        fields = fields_for(kind, self.siem_type)
+        if not fields or not values:
+            return []
+        body = {
+            "size": min(max_results, 500),
+            "sort": [{"@timestamp": "desc"}],
+            "query": {"bool": {
+                "filter": [{"range": {"@timestamp": {"gte": start.isoformat(), "lte": end.isoformat()}}}],
+                "should": [{"terms": {field: values[:1000]}} for field in fields],
+                "minimum_should_match": 1,
+            }},
+        }
+        try:
+            async with self._client(60.0) as client:
+                response = await client.post(f"{self.url}/{self.index_pattern}/_search", json=body)
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise WazuhConnectionError(f"Wazuh indicator query failed ({e.response.status_code}): {e.response.text[:300]}") from e
+        except httpx.RequestError as e:
+            raise WazuhConnectionError(f"Wazuh connection failed: {type(e).__name__}: {e}") from e
+        events: List[dict] = []
+        for hit in response.json().get("hits", {}).get("hits", []):
+            events.extend(wazuh_to_ecs_events(hit.get("_source", {}), self.host_aliases))
+        return events
+
+    async def find_vulnerabilities(self, cves: List[str], max_results: int = 200) -> List[dict]:
+        """What Wazuh's own vulnerability detector already reports for these CVEs (empty until the detector has data)."""
+        if not cves:
+            return []
+        body = {"size": min(max_results, 500), "query": {"terms": {VULNERABILITY_FIELD: cves[:1000]}}}
+        try:
+            async with self._client(60.0) as client:
+                response = await client.post(f"{self.url}/{VULNERABILITY_INDEX}/_search", json=body)
+                if response.status_code == 404:
+                    return []                      # no vulnerability index at all
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise WazuhConnectionError(f"Wazuh vulnerability query failed ({e.response.status_code}): {e.response.text[:300]}") from e
+        except httpx.RequestError as e:
+            raise WazuhConnectionError(f"Wazuh connection failed: {type(e).__name__}: {e}") from e
+        found = []
+        for hit in response.json().get("hits", {}).get("hits", []):
+            src = hit.get("_source", {})
+            found.append({
+                "cve": (src.get("vulnerability") or {}).get("id"),
+                "host": (src.get("agent") or {}).get("name"),
+                "package": (src.get("package") or {}).get("name"),
+                "version": (src.get("package") or {}).get("version"),
+                "severity": (src.get("vulnerability") or {}).get("severity"),
+            })
+        return found
+
+    async def vulnerability_records(self) -> int:
+        """How many vulnerability records Wazuh holds (0 means the exposure check has nothing to look at)."""
+        try:
+            async with self._client(30.0) as client:
+                response = await client.post(f"{self.url}/{VULNERABILITY_INDEX}/_count", json={"query": {"match_all": {}}})
+                return int(response.json().get("count", 0)) if response.status_code == 200 else 0
+        except (httpx.RequestError, ValueError):
+            return 0

@@ -264,6 +264,12 @@ MATRIX = [
     ("POST", f"/api/investigations/{UID}/steps/{UID}/approve", ALL), ("POST", f"/api/investigations/{UID}/steps/{UID}/reject", ALL),
     ("POST", f"/api/investigations/{UID}/conclude", L2_UP),
     ("GET", f"/api/investigations/{UID}/report.pdf", ALL), ("GET", f"/api/investigations/{UID}/notebook", ALL),
+    ("GET", "/api/coverage/", ALL), ("GET", "/api/coverage/navigator", ALL),
+    ("GET", "/api/jobs/", ALL), ("POST", "/api/jobs/", ADMIN), ("PATCH", f"/api/jobs/{UID}", ADMIN), ("DELETE", f"/api/jobs/{UID}", ADMIN),
+    ("POST", f"/api/jobs/{UID}/run", L2_UP), ("GET", f"/api/jobs/{UID}/runs", ALL),
+    ("GET", f"/api/jobs/runs/{UID}", ALL), ("GET", f"/api/jobs/runs/{UID}/report.pdf", ALL),
+    ("GET", "/api/notifications/", ALL), ("GET", "/api/notifications/summary", ALL),
+    ("POST", f"/api/notifications/{UID}/acknowledge", ALL), ("POST", "/api/notifications/acknowledge-all", ALL),
 ]
 
 

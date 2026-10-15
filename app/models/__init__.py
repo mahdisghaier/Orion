@@ -277,6 +277,92 @@ class InvestigationStep(Base):
     investigation: Mapped["Investigation"] = relationship(back_populates="steps")
 
 
+class ScheduledJob(Base):
+    """A recurring check run by the scheduler (currently the threat-intelligence check)."""
+    __tablename__ = "scheduled_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    interval_hours: Mapped[int] = mapped_column(Integer, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
+    config: Mapped[dict] = mapped_column(JSONB, server_default="{}", nullable=False)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('threat_intel')", name="ck_job_kind"),
+        CheckConstraint("interval_hours BETWEEN 1 AND 336", name="ck_job_interval"),
+    )
+
+    runs: Mapped[List["JobRun"]] = relationship(
+        back_populates="job", order_by="JobRun.started_at.desc()", cascade="all, delete-orphan"
+    )
+
+
+class JobRun(Base):
+    """One execution of a job: what it checked, what it could not check, and the verdict."""
+    __tablename__ = "job_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("scheduled_jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(Text, server_default="running", nullable=False)
+    trigger: Mapped[str] = mapped_column(Text, server_default="schedule", nullable=False)
+    summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('running','findings','clear','incomplete','error')", name="ck_run_status"),
+        CheckConstraint("trigger IN ('schedule','manual')", name="ck_run_trigger"),
+        Index("idx_runs_job", "job_id"),
+    )
+
+    job: Mapped["ScheduledJob"] = relationship(back_populates="runs")
+
+
+class Notification(Base):
+    """A note for the SOC: a job found something, or checked and found nothing (within its limits)."""
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(Text, server_default="info", nullable=False)
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("job_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    acknowledged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    acknowledged_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("severity IN ('info','warning','critical')", name="ck_notification_severity"),
+        Index("idx_notifications_created", "created_at"),
+    )
+
+
+class IntelCache(Base):
+    """The last copy of each threat-intelligence feed, trimmed to what ORION uses, so a run does not hit the feeds every time."""
+    __tablename__ = "intel_cache"
+
+    source: Mapped[str] = mapped_column(Text, primary_key=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
 class SIEMProfile(Base):
     """Latest data profile of a SIEM connection (services/data_profile.py); one row per connection."""
     __tablename__ = "siem_profiles"

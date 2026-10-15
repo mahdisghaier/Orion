@@ -407,6 +407,85 @@ class ProposeResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────
+# SCHEDULED JOBS + NOTIFICATIONS
+# ─────────────────────────────────────────────────────────────────
+class JobConfig(BaseModel):
+    """Settings of a threat-intelligence job. Unknown keys are refused rather than silently ignored."""
+    model_config = ConfigDict(extra="forbid")
+
+    campaigns: int = Field(8, ge=1, le=30, description="how many of the most recent ATT&CK campaigns to take techniques from")
+    max_techniques: int = Field(30, ge=1, le=60)
+    platform: str = Field("Linux", pattern="^(Linux|Windows|macOS)$")
+    kev_days: int = Field(7, ge=1, le=30, description="how far back the first run looks")
+    custom_iocs: dict = Field(default_factory=dict, description='{"ip": [...], "domain": [...], "sha256": [...]}')
+
+
+class JobCreate(BaseModel):
+    name: str = Field("Daily threat-intelligence check", min_length=1, max_length=120)
+    kind: str = Field("threat_intel", pattern="^threat_intel$")
+    interval_hours: int = Field(24, ge=1, le=336)
+    enabled: bool = True
+    config: JobConfig = Field(default_factory=JobConfig)
+
+
+class JobUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=120)
+    interval_hours: Optional[int] = Field(None, ge=1, le=336)
+    enabled: Optional[bool] = None
+    config: Optional[JobConfig] = None
+
+
+class JobRunBrief(BaseModel):
+    id: UUID
+    status: str
+    trigger: str
+    started_at: datetime
+    finished_at: Optional[datetime] = None
+    headline: Optional[str] = None
+    error: Optional[str] = None
+
+
+class JobResponse(BaseModel):
+    id: UUID
+    name: str
+    kind: str
+    interval_hours: int
+    enabled: bool
+    config: dict
+    created_at: datetime
+    last_run_at: Optional[datetime] = None
+    next_run_at: Optional[datetime] = None
+    running: bool = False
+    latest_run: Optional[JobRunBrief] = None
+
+
+class JobRunResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    job_id: UUID
+    started_at: datetime
+    finished_at: Optional[datetime] = None
+    status: str
+    trigger: str
+    summary: Optional[dict] = None
+    error: Optional[str] = None
+
+
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    kind: str
+    title: str
+    body: str
+    severity: str
+    run_id: Optional[UUID] = None
+    created_at: datetime
+    acknowledged_at: Optional[datetime] = None
+
+
+# ─────────────────────────────────────────────────────────────────
 # PAGINATION
 # ─────────────────────────────────────────────────────────────────
 class PaginatedResponse(BaseModel):

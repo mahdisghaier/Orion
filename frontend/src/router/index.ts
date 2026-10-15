@@ -45,6 +45,24 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'threat-intel',
+        name: 'threat-intel',
+        component: () => import('@/views/ThreatIntelView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'coverage',
+        name: 'coverage',
+        component: () => import('@/views/CoverageView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: () => import('@/views/NotificationsView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'hunts',
         name: 'hunts',
         component: () => import('@/views/HuntsView.vue'),

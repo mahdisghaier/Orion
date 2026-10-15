@@ -1,4 +1,5 @@
 """FastAPI application entry point."""
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -7,13 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.csrf import csrf_ok
 from app.core.database import engine
-from app.api import auth, users, siem, hunts, findings, chat, sigma, investigations
+from app.services.scheduler import scheduler_loop
+from app.api import auth, users, siem, hunts, findings, chat, sigma, investigations, coverage, jobs, notifications
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"🚀 {settings.APP_NAME} starting in {settings.APP_ENV} mode")
+    stop, task = asyncio.Event(), None
+    if settings.SCHEDULER_ENABLED:
+        task = asyncio.create_task(scheduler_loop(stop))
     yield
+    stop.set()
+    if task:
+        await task
     await engine.dispose()
     print(f"🛑 {settings.APP_NAME} stopped")
 
@@ -51,6 +59,9 @@ app.include_router(findings.router, prefix="/api/findings", tags=["findings"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(sigma.router, prefix="/api/sigma", tags=["sigma"])
 app.include_router(investigations.router, prefix="/api/investigations", tags=["investigations"])
+app.include_router(coverage.router, prefix="/api/coverage", tags=["coverage"])
+app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 
 
 @app.get("/health")

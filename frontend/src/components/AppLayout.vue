@@ -15,6 +15,11 @@
         >
           <component :is="item.icon" class="w-4 h-4 mr-3" />
           {{ item.label }}
+          <span
+            v-if="item.badge"
+            class="ml-auto text-xs font-bold rounded-full px-2 py-0.5 text-white"
+            :class="worst === 'critical' ? 'bg-red-600' : worst === 'warning' ? 'bg-amber-600' : 'bg-green-700'"
+          >{{ item.badge }}</span>
         </RouterLink>
       </nav>
       <div class="p-3 border-t border-[#1a4a7a]">
@@ -39,20 +44,44 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Target, Bug, Server, Users, LogOut, MessageCircle, Search } from 'lucide-vue-next'
+import { Target, Bug, Server, Users, LogOut, MessageCircle, Search, ShieldAlert, Grid3x3, Bell } from 'lucide-vue-next'
+import { notificationSummary } from '@/api/intel'
 
 const auth = useAuthStore()
 const route = useRoute()
 
+const unread = ref(0)
+const worst = ref<string | null>(null)
+let badgeTimer: number | undefined
+
+async function refreshBadge() {
+  try {
+    const s = await notificationSummary()
+    unread.value = s.unread
+    worst.value = s.worst
+  } catch {
+    // the badge is a convenience: a failed refresh must not disturb the page
+  }
+}
+
+onMounted(() => {
+  refreshBadge()
+  badgeTimer = window.setInterval(refreshBadge, 60000)
+})
+onBeforeUnmount(() => window.clearInterval(badgeTimer))
+
 const navItems = computed(() => {
-  const items = [
+  const items: { path: string; label: string; icon: any; badge?: number }[] = [
     { path: '/chat', label: 'AI Assistant', icon: MessageCircle },
     { path: '/findings', label: 'Findings', icon: Bug },
     { path: '/investigations', label: 'Investigations', icon: Search },
     { path: '/hunts', label: 'Hunts', icon: Target },
+    { path: '/threat-intel', label: 'Threat intel', icon: ShieldAlert },
+    { path: '/coverage', label: 'Coverage', icon: Grid3x3 },
+    { path: '/notifications', label: 'Notifications', icon: Bell, badge: unread.value },
   ]
   if (auth.isAdmin) {
     items.push({ path: '/siem', label: 'SIEM Connections', icon: Server })
