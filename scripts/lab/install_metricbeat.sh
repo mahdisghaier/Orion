@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install and configure Metricbeat 8.15.0 (system/process metricset, 30s) -> Elastic.
+# Install and configure Metricbeat 8.15.0 (system/process every 5s, system/socket every 2s) -> Elastic.
 # Run:  sudo bash scripts/lab/install_metricbeat.sh      (idempotent)
 # Stop: sudo bash scripts/lab/stop_lab.sh
 set -euo pipefail
@@ -78,11 +78,19 @@ EOF
 metricbeat modules enable system >/dev/null 2>&1 || true
 cat > /etc/metricbeat/modules.d/system.yml <<'EOF'
 - module: system
-  period: 30s
+  period: 5s
   metricsets:
     - process
   processes: ['.*']
   process.cgroups.enabled: false
+# New TCP connections (source/destination address and port, owning process), seen by polling the socket table.
+# This works where Auditbeat cannot (WSL2 refuses the audit socket and the kernel probes); a connection that opens
+# and closes within one period can still be missed.
+- module: system
+  period: 2s
+  metricsets:
+    - socket
+  socket.reverse_lookup.enabled: false
 EOF
 chown root:root /etc/metricbeat/metricbeat.yml /etc/metricbeat/modules.d/system.yml
 chmod 600 /etc/metricbeat/metricbeat.yml
