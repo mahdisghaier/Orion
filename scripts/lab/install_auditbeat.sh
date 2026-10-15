@@ -24,7 +24,7 @@ cluster_ver=$(curl -fsS "$ES" | python3 -I -c 'import sys,json; print(json.load(
 
 # The kernel must be able to audit system calls. Auditbeat takes the audit netlink socket itself,
 # so a running auditd would fight it for that socket.
-if [ -r /proc/config.gz ] && ! zcat /proc/config.gz | grep -q '^CONFIG_AUDITSYSCALL=y'; then
+if [ -r /proc/config.gz ] && [ -z "$(zcat /proc/config.gz | grep '^CONFIG_AUDITSYSCALL=y')" ]; then
   echo "This kernel has no syscall auditing (CONFIG_AUDITSYSCALL). Auditbeat cannot see process starts here."
   exit 1
 fi
