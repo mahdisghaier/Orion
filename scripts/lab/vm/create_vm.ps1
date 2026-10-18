@@ -36,8 +36,8 @@ $disk = Join-Path $folder "$Name.vdi"
 & $vbox storagectl $Name --name SATA --add sata --controller IntelAhci
 & $vbox storageattach $Name --storagectl SATA --port 0 --device 0 --type hdd --medium $disk
 
-& $vbox unattended install $Name --iso="$Iso" --user=soc --full-user-name="SOC" --password="$pw" `
-    --hostname=orion-lab.local --time-zone=Africa/Tunis --locale=en_US --install-additions=false `
+& $vbox unattended install $Name --iso="$Iso" --user=soc --full-user-name="SOC" --user-password="$pw" `
+    --hostname=orion-lab.local --time-zone=Africa/Tunis --locale=en_US --no-install-additions `
     --post-install-command="mkdir -p /home/soc/.ssh && echo '$pub' >> /home/soc/.ssh/authorized_keys && chown -R soc:soc /home/soc/.ssh && chmod 700 /home/soc/.ssh && chmod 600 /home/soc/.ssh/authorized_keys && (apt-get install -y openssh-server >/dev/null 2>&1; systemctl enable ssh)" `
     --start-vm=gui
 Write-Host ""
