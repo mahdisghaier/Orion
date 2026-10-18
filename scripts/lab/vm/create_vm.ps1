@@ -7,8 +7,9 @@ param(
   [string]$Name   = "orion-lab",
   [string]$Iso    = "$env:USERPROFILE\Downloads\ubuntu-26.04-live-server-amd64.iso",
   [int]$MemoryMB  = 3072,
-  [int]$Cpus      = 2,
-  [int]$DiskGB    = 40
+  [int]$Cpus      = 1,   # one CPU: with Hyper-V active (WSL2, Docker Desktop) more virtual CPUs make the guest kernel lock up
+  [int]$DiskGB    = 40,
+  [string]$Password = ""
 )
 $ErrorActionPreference = 'Stop'
 $vbox = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
@@ -16,8 +17,10 @@ if (-not (Test-Path $vbox)) { Write-Host "VirtualBox is not installed. Run Virtu
 if (-not (Test-Path $Iso))  { Write-Host "ISO not found: $Iso"; exit 1 }
 if ((& $vbox list vms) -match "`"$Name`"") { Write-Host "A VM named $Name already exists. Nothing done."; exit 0 }
 
-$secure = Read-Host "Choose a password for the VM account 'soc'" -AsSecureString
-$pw = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+if ($Password) { $pw = $Password } else {
+  $secure = Read-Host "Choose a password for the VM account 'soc'" -AsSecureString
+  $pw = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+}
 if ($pw.Length -lt 8) { Write-Host "Use at least 8 characters."; exit 1 }
 
 # Public key of the operator's WSL account (created with: ssh-keygen -t ed25519 -f ~/.ssh/orion_vm). It is installed in the VM,
