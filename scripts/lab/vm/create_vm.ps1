@@ -6,7 +6,7 @@
 param(
   [string]$Name   = "orion-lab",
   [string]$Iso    = "$env:USERPROFILE\Downloads\ubuntu-26.04-live-server-amd64.iso",
-  [int]$MemoryMB  = 5120,
+  [int]$MemoryMB  = 3072,
   [int]$Cpus      = 2,
   [int]$DiskGB    = 40
 )
@@ -20,14 +20,16 @@ $secure = Read-Host "Choose a password for the VM account 'soc'" -AsSecureString
 $pw = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
 if ($pw.Length -lt 8) { Write-Host "Use at least 8 characters."; exit 1 }
 
-# Host-only adapter: lets the VM and Windows (and WSL) reach each other without exposing the lab to the network.
-$hostonly = (& $vbox list hostonlyifs) | Select-String '^Name:\s+(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 1
-if (-not $hostonly) { & $vbox hostonlyif create | Out-Null; $hostonly = (& $vbox list hostonlyifs) | Select-String '^Name:\s+(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 1 }
-Write-Host "Host-only adapter: $hostonly"
+# Public key of the operator's WSL account (created with: ssh-keygen -t ed25519 -f ~/.ssh/orion_vm). It is installed in the VM,
+# so no password has to be shared to administer it. The pubkey is not a secret.
+$pub = (wsl.exe -e bash -lc 'cat ~/.ssh/orion_vm.pub 2>/dev/null').Trim()
 
 & $vbox createvm --name $Name --ostype Ubuntu_64 --register | Out-Null
 & $vbox modifyvm $Name --memory $MemoryMB --cpus $Cpus --ioapic on --audio-enabled off --graphicscontroller vmsvga --vram 16 `
-    --nic1 nat --nic2 hostonly --hostonlyadapter2 "$hostonly"
+    --nic1 nat
+# NAT only (no host-only driver needed): ssh is reached through 127.0.0.1:2222, the lab web interface through 5173 and 8000,
+# and the VM reaches Windows services (for example Docker ports) at 10.0.2.2.
+& $vbox modifyvm $Name --natpf1 "ssh,tcp,127.0.0.1,2222,,22" --natpf1 "ui,tcp,127.0.0.1,5173,,5173" --natpf1 "api,tcp,127.0.0.1,8000,,8000"
 $folder = Split-Path ((& $vbox showvminfo $Name --machinereadable | Select-String '^CfgFile="(.+)"$').Matches[0].Groups[1].Value)
 $disk = Join-Path $folder "$Name.vdi"
 & $vbox createmedium disk --filename $disk --size ($DiskGB * 1024) --variant Standard | Out-Null
@@ -35,7 +37,8 @@ $disk = Join-Path $folder "$Name.vdi"
 & $vbox storageattach $Name --storagectl SATA --port 0 --device 0 --type hdd --medium $disk
 
 & $vbox unattended install $Name --iso="$Iso" --user=soc --full-user-name="SOC" --password="$pw" `
-    --hostname=orion-lab.local --time-zone=Africa/Tunis --locale=en_US --install-additions=false --start-vm=gui
+    --hostname=orion-lab.local --time-zone=Africa/Tunis --locale=en_US --install-additions=false `
+    --post-install-command="mkdir -p /home/soc/.ssh && echo '$pub' >> /home/soc/.ssh/authorized_keys && chown -R soc:soc /home/soc/.ssh && chmod 700 /home/soc/.ssh && chmod 600 /home/soc/.ssh/authorized_keys && (apt-get install -y openssh-server >/dev/null 2>&1; systemctl enable ssh)" `
+    --start-vm=gui
 Write-Host ""
-Write-Host "The VM is installing Ubuntu by itself (about 10 minutes). When the login prompt appears, log in as 'soc' and run:  ip -4 a"
-Write-Host "Send the 192.168.56.x address back to continue with the setup."
+Write-Host "The VM is installing Ubuntu by itself (about 10 minutes) and then reboots. Tell Claude when the login prompt appears: ssh is reachable at 127.0.0.1:2222 for user soc."
