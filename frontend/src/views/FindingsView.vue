@@ -106,9 +106,9 @@
               <div
                 v-if="finding.corroborated_by?.length"
                 class="text-xs text-emerald-700 mt-1"
-                :title="'Also reported by ' + finding.corroborated_by.map(c => c.siem_type).join(', ')"
+                :title="'Also reported by ' + summarise(finding.corroborated_by)"
               >
-                &check; also in {{ finding.corroborated_by.map(c => c.siem_type).join(', ') }}
+                &check; also in {{ summarise(finding.corroborated_by) }}
               </div>
             </td>
             <td class="px-4 py-3">
@@ -258,4 +258,11 @@ function statusClass(status: string): string {
 onMounted(() => {
   loadFindings()
 })
+
+// "elastic x28, wazuh x2" instead of one word per corroborating finding
+function summarise(items: { siem_type: string }[]): string {
+  const counts: Record<string, number> = {}
+  for (const c of items) counts[c.siem_type] = (counts[c.siem_type] || 0) + 1
+  return Object.entries(counts).map(([name, n]) => (n > 1 ? `${name} \u00d7${n}` : name)).join(', ')
+}
 </script>

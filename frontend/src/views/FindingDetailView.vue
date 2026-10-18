@@ -195,10 +195,11 @@
         <p class="text-sm font-medium text-emerald-800">
           Corroborated: also reported by
           <RouterLink
-            v-for="c in finding.corroborated_by" :key="c.id"
+            v-for="c in finding.corroborated_by.slice(0, 6)" :key="c.id"
             :to="`/findings/${c.id}`"
             class="underline mx-1"
           >{{ c.siem_type }}</RouterLink>
+          <span v-if="finding.corroborated_by.length > 6">and {{ finding.corroborated_by.length - 6 }} more ({{ summariseSiems(finding.corroborated_by) }})</span>
           for the same host and process in this hunt.
         </p>
         <p class="text-xs text-emerald-700 mt-1">
@@ -513,4 +514,10 @@ function statusClass(status: string): string {
 onMounted(() => {
   loadFinding()
 })
+
+function summariseSiems(items: { siem_type: string }[]): string {
+  const counts: Record<string, number> = {}
+  for (const c of items) counts[c.siem_type] = (counts[c.siem_type] || 0) + 1
+  return Object.entries(counts).map(([name, n]) => `${name} \u00d7${n}`).join(', ')
+}
 </script>
