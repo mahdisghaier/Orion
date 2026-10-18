@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, List, Optional
 
-FIM_DIR = Path.home() / "orion-eval-fim"
+FIM_DIR = Path("/home/soc/orion-eval-fim") if os.environ.get("ORION_EVAL_SSH") else Path.home() / "orion-eval-fim"
 HOLD_SECONDS = 100          # how long the "long-lived" variants stay alive (Metricbeat samples every 30 s)
 NC_HOLD_SECONDS = 420       # the listener must outlive Wazuh's 360 s listening-port check
 
@@ -34,12 +34,54 @@ class Instance:
         return self.marker.lower() in text.lower()
 
 
-def _spawn(argv: List[str]) -> subprocess.Popen:
+# When ORION_EVAL_SSH is set ("user@host|port|path-to-key"), the scenarios run on that machine instead of this one: the lab
+# host is a virtual machine with a standard Linux kernel (auditd works there). One SSH session stays open and receives one
+# command line per instance. (One session per instance would overwhelm the SSH server of a one-CPU machine.)
+REMOTE = os.environ.get("ORION_EVAL_SSH")
+_dispatcher = None
+
+
+def _send(line: str) -> None:
+    global _dispatcher
+    import shlex  # noqa: F401
+    if _dispatcher is None or _dispatcher.poll() is not None:
+        target, port, key = REMOTE.split("|")
+        _dispatcher = subprocess.Popen(
+            ["/mnt/c/Windows/System32/OpenSSH/ssh.exe", "-T", "-i", key, "-p", port, "-o", "BatchMode=yes",
+             "-o", "StrictHostKeyChecking=no", "-o", "ServerAliveInterval=15", target, "bash"],
+            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+    _dispatcher.stdin.write(line + "\n")
+    _dispatcher.stdin.flush()
+
+
+class RemoteProc:
+    """Stands for a process started on the lab host: it can only be asked to stop."""
+    pid = 0
+
+    def __init__(self, argv: List[str]):
+        self.argv = argv
+
+    def terminate(self) -> None:
+        import shlex
+        _send("pkill -TERM -f -- " + shlex.quote(re.escape(" ".join(self.argv))) + " >/dev/null 2>&1")
+
+    def wait(self, timeout=None) -> None:
+        return None
+
+
+def _spawn(argv: List[str]):
+    if REMOTE:
+        import shlex
+        _send("( setsid " + " ".join(shlex.quote(a) for a in argv) + " </dev/null >/dev/null 2>&1 & )")
+        return RemoteProc(argv)
     return subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             start_new_session=True)
 
 
 def _free_port() -> int:
+    if REMOTE:                                    # the port must be free on the other machine: pick one at random
+        import random
+        return random.randint(20000, 40000)
     import socket
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -86,8 +128,10 @@ def launch_history_clear(run: str, variant: str, helper_port: int) -> Instance:
 
 def launch_file_change(run: str, variant: str, helper_port: int) -> Instance:
     marker = f"orion-eval-{run}-file-{os.urandom(2).hex()}"
-    FIM_DIR.mkdir(exist_ok=True)
-    script = (f"cd {FIM_DIR} && echo one > {marker}.txt && sleep 3 && echo two >> {marker}.txt && sleep 3 && rm {marker}.txt")
+    if not REMOTE:
+        FIM_DIR.mkdir(exist_ok=True)
+    target = f"{FIM_DIR}/{marker}.txt"      # absolute path: audit records of a relative name would not carry the folder
+    script = (f"mkdir -p {FIM_DIR} && echo one > {target} && sleep 3 && echo two >> {target} && sleep 3 && rm {target}")
     inst = Instance("T1565.001", variant, marker)
     inst.procs.append(_spawn(["bash", "-c", script]))
     return inst
@@ -143,13 +187,16 @@ def start_helper_listener() -> tuple:
     port = _free_port()
     code = ("import socket,time\ns=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)\n"
             f"s.bind(('127.0.0.1',{port}));s.listen(64)\nkeep=[]\nwhile True:\n    keep.append(s.accept())\n")
-    return _spawn([sys.executable, "-c", code]), port
+    return _spawn(["python3" if REMOTE else sys.executable, "-c", code]), port
 
 
 def stop(inst: Instance) -> None:
     import signal
     inst.stopped = True
     for p in inst.procs:
+        if isinstance(p, RemoteProc):
+            p.terminate()
+            continue
         try:
             os.killpg(os.getpgid(p.pid), signal.SIGTERM)
         except (ProcessLookupError, PermissionError):

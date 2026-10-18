@@ -1,0 +1,96 @@
+{
+ "meta": {
+  "date": "2026-10-19 00:05",
+  "commit": "4b44124",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "python": "3.12.13",
+  "run_id": "000432"
+ },
+ "rows": [
+  {
+   "technique": "T1565.001",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 23,
+   "last_ts": 1792364690.017,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 7,
+    "derived": 0,
+    "has_process": 0,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 23,
+   "last_ts": 1792364686.885,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 7,
+    "derived": 0,
+    "has_process": 0,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 23,
+   "last_ts": 1792364683.848,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 5,
+    "derived": 0,
+    "has_process": 0,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "elastic",
+   "label": 1,
+   "score": 33,
+   "last_ts": 1792364689.919,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "elastic",
+   "label": 1,
+   "score": 34,
+   "last_ts": 1792364686.894,
+   "features": {
+    "occurrences": 2,
+    "span_minutes": 0.05,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  }
+ ]
+}

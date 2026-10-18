@@ -53,12 +53,17 @@ def log(message: str) -> None:
 
 # ── setup ─────────────────────────────────────────────────────────────────────────
 
-async def live_connectors() -> list:
-    """Active connections that have received events recently (archives are left out)."""
+HOST_FILTER = ""      # when set, only events of this host count (the other lab hosts are not part of the experiment)
+
+
+async def live_connectors(names=None) -> list:
+    """Active connections that have received events recently (archives are left out). `names`: keep only connections whose name contains one of these."""
     live = []
     async with async_session() as db:
         for conn in (await db.execute(select(SIEMConnection).where(SIEMConnection.is_active.is_(True)))).scalars().all():
             if conn.type not in ("elastic", "wazuh"):
+                continue
+            if names and not any(n.lower() in conn.name.lower() for n in names):
                 continue
             connector = get_connector(conn)
             try:
@@ -91,7 +96,10 @@ def compile_queries(technique, live: list) -> dict:
 
 async def fetch(siem: dict, query: str, since: str) -> list:
     try:
-        return await siem["connector"].run_query(query, max_results=1000, time_range={"from": since})
+        events = await siem["connector"].run_query(query, max_results=1000, time_range={"from": since})
+        if HOST_FILTER:
+            events = [e for e in events if str(get_nested(e, "host.name") or "").lower() == HOST_FILTER]
+        return events
     except Exception as e:
         log(f"query failed on {siem['name']}: {type(e).__name__}: {str(e)[:120]}")
         return []
@@ -104,7 +112,7 @@ def blob(event: dict) -> str:
 # ── the experiment ────────────────────────────────────────────────────────────────
 
 async def run(args) -> dict:
-    live = await live_connectors()
+    live = await live_connectors(args.connections)
     if not live:
         raise SystemExit("no live Elastic or Wazuh connection found (is the lab running?)")
     log("live sources: " + ", ".join(f"{s['name']} [{s['type']}]" for s in live))
@@ -427,6 +435,9 @@ def main() -> None:
     parser.add_argument("--only", type=lambda v: v.split(","), default=None, help="comma-separated technique keys")
     parser.add_argument("--fim", action="store_true", help="include the file-integrity technique (needs scripts/lab/enable_fim_demo.sh)")
     parser.add_argument("--quick", action="store_true", help="stop after 150 s (the Wazuh listening-port check will not be reached)")
+    parser.add_argument("--connections", type=lambda v: v.split(","), default=None, help="comma-separated parts of connection names to query")
+    parser.add_argument("--host", default="", help="count only the events of this host name")
+    parser.add_argument("--out", default="", help="sub-folder of docs/evaluation for the results (keeps earlier results untouched)")
     parser.add_argument("--short-repeats", type=int, default=30)
     parser.add_argument("--short-gap", type=int, default=3, help="seconds between short-lived instances")
     parser.add_argument("--max-wait", type=int, default=None)
@@ -435,6 +446,10 @@ def main() -> None:
     parser.add_argument("--from-json", action="store_true", help="rebuild RESULTS.md from the saved results.json (no experiment)")
     args = parser.parse_args()
     logging.disable(logging.CRITICAL)
+    global OUT_DIR, HOST_FILTER
+    HOST_FILTER = args.host.lower()
+    if args.out:
+        OUT_DIR = OUT_DIR / args.out
 
     if args.from_json:
         saved = json.loads((OUT_DIR / "results.json").read_text())
