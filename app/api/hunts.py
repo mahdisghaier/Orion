@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.tenancy import client_of_connections, ensure_visible, scoped
-from app.models import Hunt, HuntResult, User
-from app.schemas import HuntCreate, HuntResponse, HuntResultResponse, PaginatedResponse
+from app.core.tenancy import active_connection_ids, client_of_connections, ensure_visible, scoped, user_client
+from app.models import Client, Hunt, HuntResult, User
+from app.schemas import ClientHuntResult, HuntCreate, HuntResponse, HuntResultResponse, MultiHuntCreate, PaginatedResponse
+from app.services.multi_hunt import hunt_every_client
 from app.services.corroboration import enrich_findings
 from app.services.hunt_runner import HuntRunner, HuntRunnerError
 
@@ -52,6 +53,41 @@ async def create_hunt(
                                "from_saved_rule": bool(hunt_data.rule_id)}, request=request)
     await db.commit()
     return hunt
+
+
+@router.post("/by-client", response_model=List[ClientHuntResult])
+async def hunt_for_every_client(
+    payload: MultiHuntCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Run one rule for each client the caller may work for: a separate hunt per client, never one across clients.
+
+    Staff of the SOC (platform-wide) get every active client; a user bound to a client gets that client only."""
+    if not payload.rule_id and not payload.rule_yaml:
+        raise HTTPException(status_code=422, detail="Either rule_id or rule_yaml must be provided")
+    query = select(Client).where(Client.is_active.is_(True)).order_by(Client.name)
+    if user_client(current_user) is not None:
+        query = query.where(Client.id == user_client(current_user))
+    clients = (await db.execute(query)).scalars().all()
+
+    async def connections_of(client_id):
+        return await active_connection_ids(db, current_user, client_id)
+
+    async def run(client_id, connection_ids):
+        return await HuntRunner(db).create_and_run(
+            created_by=current_user.id, siem_targets=connection_ids, rule_id=payload.rule_id,
+            rule_yaml=payload.rule_yaml, time_range=payload.time_range, client_id=client_id)
+
+    results = await hunt_every_client(clients, connections_of, run)
+    await log_action(db, user_id=current_user.id, action="hunt.create_by_client", target_type="hunt",
+                     metadata={"clients": len(results), "completed": sum(1 for r in results if r.status == "completed"),
+                               "skipped": sum(1 for r in results if r.status == "skipped"),
+                               "from_saved_rule": bool(payload.rule_id)}, request=request)
+    await db.commit()
+    return [ClientHuntResult(client_id=r.client_id, client_name=r.client_name, status=r.status, hunt_id=r.hunt_id,
+                             total_hits=r.total_hits, note=r.note) for r in results]
 
 
 @router.get("/", response_model=PaginatedResponse)

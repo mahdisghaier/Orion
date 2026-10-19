@@ -255,7 +255,7 @@ MATRIX = [
     ("GET", "/api/siem/", ADMIN), ("POST", "/api/siem/", ADMIN), ("GET", f"/api/siem/{UID}", ADMIN),
     ("POST", f"/api/siem/{UID}/test", ADMIN), ("POST", f"/api/siem/{UID}/profile", ADMIN),
     ("GET", f"/api/siem/{UID}/profile", ALL), ("DELETE", f"/api/siem/{UID}", ADMIN),
-    ("GET", "/api/hunts/", ALL), ("POST", "/api/hunts/", ALL), ("GET", f"/api/hunts/{UID}", ALL),
+    ("GET", "/api/hunts/", ALL), ("POST", "/api/hunts/", ALL), ("POST", "/api/hunts/by-client", ALL), ("GET", f"/api/hunts/{UID}", ALL),
     ("GET", f"/api/hunts/{UID}/results", ALL),
     ("GET", "/api/findings/", ALL), ("GET", f"/api/findings/{UID}", ALL), ("GET", f"/api/findings/{UID}/context", ALL),
     ("PATCH", f"/api/findings/{UID}", L2_UP), ("POST", f"/api/findings/{UID}/escalate", L2_UP),

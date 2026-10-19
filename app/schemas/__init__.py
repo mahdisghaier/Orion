@@ -179,6 +179,22 @@ class HuntCreate(BaseModel):
     client_id: Optional[UUID] = None     # default: the client of the targeted connections
 
 
+class MultiHuntCreate(BaseModel):
+    """The same rule for every client the caller may work for: one hunt per client."""
+    rule_id: Optional[UUID] = None
+    rule_yaml: Optional[str] = None
+    time_range: Optional[dict] = None
+
+
+class ClientHuntResult(BaseModel):
+    client_id: UUID
+    client_name: str
+    status: str
+    hunt_id: Optional[UUID] = None
+    total_hits: int = 0
+    note: Optional[str] = None
+
+
 class HuntResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

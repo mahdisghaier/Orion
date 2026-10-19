@@ -8,18 +8,39 @@
       {{ error }}
     </div>
 
+    <div v-if="clientResults.length" class="bg-white border rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-bold mb-3">Results by client</h2>
+      <table class="w-full text-sm">
+        <thead class="text-left text-xs uppercase text-gray-500">
+          <tr><th class="py-2">Client</th><th>Status</th><th>Findings</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in clientResults" :key="r.client_id" class="border-t">
+            <td class="py-2 font-medium">{{ r.client_name }}</td>
+            <td>{{ r.status }}<span v-if="r.note" class="text-gray-500"> · {{ r.note }}</span></td>
+            <td>{{ r.status === 'skipped' ? '—' : r.total_hits }}</td>
+            <td class="text-right"><RouterLink v-if="r.hunt_id" :to="`/hunts/${r.hunt_id}`" class="text-[#2d7ab3] hover:underline">Open</RouterLink></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <div class="space-y-6">
       <!-- SIEM targets -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">1. Select SIEM Targets</h2>
-        <select v-if="needClient" v-model="clientId" class="mb-3 px-3 py-2 border rounded text-sm">
+        <label v-if="needClient" class="flex items-start gap-2 mb-4 text-sm">
+          <input type="checkbox" v-model="everyClient" class="mt-1" />
+          <span>Run for every client. One separate hunt is run for each client, on its own SIEM connections; results are never mixed.</span>
+        </label>
+        <select v-if="needClient && !everyClient" v-model="clientId" class="mb-3 px-3 py-2 border rounded text-sm">
           <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
         <div v-if="loadingSIEM" class="text-sm text-gray-500">Loading connections...</div>
         <div v-else-if="siemConnections.length === 0" class="text-sm text-red-600">
           No active SIEM connections. Ask an admin to create one in the SIEM Connections page.
         </div>
-        <div v-else class="space-y-2">
+        <div v-else-if="!everyClient" class="space-y-2">
           <label v-for="conn in visibleConnections" :key="conn.id" class="flex items-center gap-3 p-3 border rounded hover:bg-gray-50 cursor-pointer">
             <input
               type="checkbox"
@@ -59,10 +80,10 @@
         <RouterLink to="/hunts" class="px-4 py-2 border rounded text-sm hover:bg-gray-50">Cancel</RouterLink>
         <button
           @click="submitHunt"
-          :disabled="saving || selectedSIEMs.length === 0 || !ruleYaml.trim()"
+          :disabled="saving || (!everyClient && selectedSIEMs.length === 0) || !ruleYaml.trim()"
           class="px-6 py-2 bg-[#2d7ab3] hover:bg-[#4da8da] text-white rounded text-sm font-medium disabled:opacity-50"
         >
-          {{ saving ? 'Running hunt...' : 'Run Hunt' }}
+          {{ saving ? 'Running...' : everyClient ? 'Run for every client' : 'Run Hunt' }}
         </button>
       </div>
     </div>
@@ -72,7 +93,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { createHunt } from '@/api/hunts'
+import { createHunt, createHuntForEveryClient, type ClientHuntResult } from '@/api/hunts'
 import { getSIEMConnections, type SIEMConnection } from '@/api/siem'
 import { getClients, type Client } from '@/api/clients'
 import { useAuthStore } from '@/stores/auth'
@@ -83,6 +104,8 @@ const siemConnections = ref<SIEMConnection[]>([])
 const auth = useAuthStore()
 const clients = ref<Client[]>([])
 const clientId = ref('')
+const everyClient = ref(false)
+const clientResults = ref<ClientHuntResult[]>([])
 const needClient = computed(() => auth.isPlatform && clients.value.length > 1)
 const visibleConnections = computed(() => needClient.value ? siemConnections.value.filter(c => c.client_id === clientId.value) : siemConnections.value)
 const loadingSIEM = ref(true)
@@ -128,7 +151,12 @@ function loadExample() {
 async function submitHunt() {
   error.value = ''
   saving.value = true
+  clientResults.value = []
   try {
+    if (everyClient.value) {
+      clientResults.value = await createHuntForEveryClient({ rule_yaml: ruleYaml.value })
+      return
+    }
     const hunt = await createHunt({
       rule_yaml: ruleYaml.value,
       siem_targets: selectedSIEMs.value,

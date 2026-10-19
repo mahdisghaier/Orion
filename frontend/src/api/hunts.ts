@@ -56,3 +56,18 @@ export async function createHunt(payload: HuntCreate): Promise<Hunt> {
   const { data } = await api.post('/hunts/', payload)
   return data
 }
+
+export interface ClientHuntResult {
+  client_id: string
+  client_name: string
+  status: string
+  hunt_id: string | null
+  total_hits: number
+  note: string | null
+}
+
+// the same rule for every client the user may work for: one separate hunt per client
+export async function createHuntForEveryClient(body: { rule_yaml?: string; rule_id?: string }): Promise<ClientHuntResult[]> {
+  const { data } = await api.post('/hunts/by-client', body)
+  return data
+}
