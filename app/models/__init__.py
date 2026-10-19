@@ -25,10 +25,33 @@ from app.core.database import Base
 
 
 # ─────────────────────────────────────────────────────────────────
+# 0. CLIENTS (tenants of a managed SOC)
+# ─────────────────────────────────────────────────────────────────
+class Client(Base):
+    """One customer of the SOC. Connections, hunts, findings, investigations, jobs and
+    suppressions belong to exactly one client; a user is either bound to one client or
+    platform-wide (client_id NULL: the analysts and administrators of the SOC itself)."""
+    __tablename__ = "clients"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
 # 1. USERS & RBAC
 # ─────────────────────────────────────────────────────────────────
 class User(Base):
     __tablename__ = "users"
+
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
@@ -66,6 +89,10 @@ class User(Base):
 # ─────────────────────────────────────────────────────────────────
 class SIEMConnection(Base):
     __tablename__ = "siem_connections"
+
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
@@ -146,6 +173,10 @@ class SigmaRule(Base):
 class Hunt(Base):
     __tablename__ = "hunts"
 
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
     )
@@ -201,6 +232,10 @@ class Hunt(Base):
 class Investigation(Base):
     """A hunt record: a hypothesis and the steps taken to test it, with who approved what and what came out."""
     __tablename__ = "investigations"
+
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
@@ -281,6 +316,10 @@ class ScheduledJob(Base):
     """A recurring check run by the scheduler (currently the threat-intelligence check)."""
     __tablename__ = "scheduled_jobs"
 
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
     )
@@ -334,6 +373,10 @@ class Notification(Base):
     """A note for the SOC: a job found something, or checked and found nothing (within its limits)."""
     __tablename__ = "notifications"
 
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
     )
@@ -386,6 +429,10 @@ class FindingSuppression(Base):
     """An analyst decision: this behaviour (fingerprint) is known benign, hide it in future hunts."""
     __tablename__ = "finding_suppressions"
 
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
     )
@@ -406,6 +453,10 @@ class FindingSuppression(Base):
 
 class HuntResult(Base):
     __tablename__ = "hunt_results"
+
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
@@ -513,6 +564,10 @@ class HuntResult(Base):
 # ─────────────────────────────────────────────────────────────────
 class Incident(Base):
     __tablename__ = "incidents"
+
+    client_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()

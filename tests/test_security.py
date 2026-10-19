@@ -130,8 +130,8 @@ def use_db(db):
     app.dependency_overrides[get_db] = override
 
 
-def act_as(role):
-    app.dependency_overrides[get_current_user] = lambda: NS(id=uuid.uuid4(), role=role, is_active=True, email="t@x.io", full_name="T")
+def act_as(role, client=None):
+    app.dependency_overrides[get_current_user] = lambda: NS(id=uuid.uuid4(), role=role, is_active=True, email="t@x.io", full_name="T", client_id=client)
 
 
 def reset():
@@ -214,13 +214,14 @@ class AuditCoverage(unittest.TestCase):
     def test_registering_a_siem_is_audited_without_its_config(self):
         db = RecordingDb()
         use_db(db)
-        act_as("admin")
+        client_id = uuid.uuid4()
+        act_as("admin", client=client_id)
         TestClient(app, raise_server_exceptions=False).post(
             "/api/siem/", json={"name": "lab", "type": "elastic", "config": {"url": "http://e:9200", "api_key": "KEY-VALUE-123"}})
         lines = db.audit_lines()
         self.assertEqual([l.action for l in lines], ["siem.create"])
         self.assertNotIn("KEY-VALUE-123", str(lines[0].metadata_))
-        self.assertEqual(lines[0].metadata_, {"name": "lab", "type": "elastic"})
+        self.assertEqual(lines[0].metadata_, {"name": "lab", "type": "elastic", "client_id": str(client_id)})
 
     def test_successful_and_failed_logins_are_both_audited(self):
         import app.api.auth as auth_module
@@ -248,6 +249,7 @@ ADMIN = {"admin"}
 # method, path, roles allowed to reach the handler (the documented role matrix)
 MATRIX = [
     ("GET", "/api/auth/me", ALL),
+    ("GET", "/api/clients/", ALL), ("POST", "/api/clients/", ADMIN), ("PATCH", f"/api/clients/{UID}", ADMIN),
     ("GET", "/api/users/", ADMIN), ("POST", "/api/users/", ADMIN),
     ("GET", f"/api/users/{UID}", ADMIN), ("PATCH", f"/api/users/{UID}", ADMIN),
     ("GET", "/api/siem/", ADMIN), ("POST", "/api/siem/", ADMIN), ("GET", f"/api/siem/{UID}", ADMIN),

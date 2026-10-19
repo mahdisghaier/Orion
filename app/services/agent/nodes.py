@@ -68,7 +68,8 @@ async def run_hunt(state: ChatState) -> ChatState:
             runner = HuntRunner(db)
             from uuid import UUID
             target_uuids = [UUID(t) if isinstance(t, str) else t for t in siem_targets]
-            hunt = await runner.create_and_run(created_by=UUID(user_id), siem_targets=target_uuids, rule_yaml=sigma_rule)
+            client = UUID(state["client_id"]) if state.get("client_id") else None
+            hunt = await runner.create_and_run(created_by=UUID(user_id), siem_targets=target_uuids, rule_yaml=sigma_rule, client_id=client)
             state["hunt_id"] = str(hunt.id)
             state["hunt_status"] = hunt.status
             state["total_hits"] = hunt.total_hits

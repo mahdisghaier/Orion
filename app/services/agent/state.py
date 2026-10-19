@@ -18,6 +18,7 @@ class ChatState(TypedDict):
     intent: Optional[str]                                # what the analyst wants
     sigma_rule: Optional[str]                            # generated Sigma YAML
     siem_targets: List[str]                              # which SIEMs to query
+    client_id: Optional[str]                             # the client that owns them (checked by the API)
     needs_confirmation: bool                             # waiting for user approval?
     confirmed: Optional[bool]                            # did user approve?
     

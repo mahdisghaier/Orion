@@ -29,6 +29,7 @@ from sqlalchemy.orm import selectinload
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
+from app.core.tenancy import active_connection_ids, client_for_new_object, client_of_connections, ensure_visible, scoped
 from app.models import (
     HuntResult, Investigation, InvestigationStep, LLMAudit, SIEMConnection, SIEMProfile, User,
 )
@@ -44,13 +45,11 @@ from app.services.investigation.proposer import assess_rule, propose_steps, step
 router = APIRouter()
 
 
-async def _load(db: AsyncSession, investigation_id: UUID) -> Investigation:
+async def _load(db: AsyncSession, investigation_id: UUID, user: User) -> Investigation:
     inv = (await db.execute(
         select(Investigation).options(selectinload(Investigation.steps)).where(Investigation.id == investigation_id)
     )).scalar_one_or_none()
-    if inv is None:
-        raise HTTPException(status_code=404, detail="Investigation not found")
-    return inv
+    return ensure_visible(inv, user, "Investigation")
 
 
 def _require_open(inv: Investigation) -> None:
@@ -67,20 +66,20 @@ async def create_investigation(
 ):
     title, hypothesis = payload.title, payload.hypothesis
     if payload.from_finding_id:
-        finding = await db.get(HuntResult, payload.from_finding_id)
-        if finding is None:
-            raise HTTPException(status_code=404, detail="Finding not found")
+        finding = ensure_visible(await db.get(HuntResult, payload.from_finding_id), current_user, "Finding")
+        if payload.client_id is None:
+            payload.client_id = finding.client_id
 
     targets = payload.siem_targets
     if not targets:
-        targets = [c.id for c in (await db.execute(
-            select(SIEMConnection).where(SIEMConnection.is_active.is_(True))
-        )).scalars().all()]
+        client = await client_for_new_object(db, current_user, payload.client_id)
+        targets = await active_connection_ids(db, current_user, client)
     if not targets:
         raise HTTPException(status_code=422, detail="No active SIEM connections to investigate with")
+    client_id = await client_of_connections(db, current_user, targets, payload.client_id)
 
     inv = Investigation(
-        title=title, hypothesis=hypothesis, siem_targets=targets, time_range=payload.time_range,
+        client_id=client_id, title=title, hypothesis=hypothesis, siem_targets=targets, time_range=payload.time_range,
         source_finding_id=payload.from_finding_id, created_by=current_user.id,
     )
     db.add(inv)
@@ -91,7 +90,7 @@ async def create_investigation(
         request=request,
     )
     await db.commit()
-    return await _load(db, inv.id)
+    return await _load(db, inv.id, current_user)
 
 
 @router.get("/", response_model=list[InvestigationResponse])
@@ -100,7 +99,8 @@ async def list_investigations(
     current_user: User = Depends(get_current_user),
 ):
     rows = (await db.execute(
-        select(Investigation).options(selectinload(Investigation.steps)).order_by(Investigation.created_at.desc()).limit(100)
+        scoped(select(Investigation).options(selectinload(Investigation.steps)), Investigation.client_id, current_user)
+        .order_by(Investigation.created_at.desc()).limit(100)
     )).scalars().all()
     return rows
 
@@ -111,7 +111,7 @@ async def get_investigation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await _load(db, investigation_id)
+    return await _load(db, investigation_id, current_user)
 
 
 @router.post("/{investigation_id}/propose", response_model=ProposeResponse)
@@ -122,7 +122,7 @@ async def propose(
     current_user: User = Depends(get_current_user),
 ):
     """Propose the next steps. Proposals are stored as 'proposed'; nothing runs until an analyst approves."""
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     _require_open(inv)
 
     context = await build_context(db, inv)
@@ -193,7 +193,7 @@ async def add_step(
     current_user: User = Depends(get_current_user),
 ):
     """The analyst adds a Sigma rule step. Same validation as an AI proposal; it still waits for approval."""
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     _require_open(inv)
     assessment, reason = assess_rule(payload.sigma_rule, await _siem_targets(db, inv))
     if reason:
@@ -236,7 +236,7 @@ async def approve_step(
     current_user: User = Depends(get_current_user),
 ):
     """The analyst authorises this step; it runs now and its outcome is recorded."""
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     _require_open(inv)
     step = await _step_of(inv, step_id)
 
@@ -269,7 +269,7 @@ async def reject_step(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     _require_open(inv)
     step = await _step_of(inv, step_id)
     step.status = "rejected"
@@ -295,7 +295,7 @@ async def conclude(
     current_user: User = Depends(require_l2_plus),
 ):
     """Close the investigation with a verdict. L2+ only. Steps still waiting for a decision are kept as proposed."""
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     _require_open(inv)
     inv.status = "concluded"
     inv.verdict = payload.verdict
@@ -307,7 +307,7 @@ async def conclude(
         target_id=inv.id, metadata={"verdict": payload.verdict}, request=request,
     )
     await db.commit()
-    return await _load(db, inv.id)
+    return await _load(db, inv.id, current_user)
 
 
 async def _audited_export(db: AsyncSession, request: Request, user: User, inv: Investigation, kind: str) -> None:
@@ -326,7 +326,7 @@ async def export_report(
     current_user: User = Depends(get_current_user),
 ):
     """PDF report built only from the stored hunt record. An open investigation exports as a DRAFT."""
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     pdf = build_report_pdf(await gather_export_data(db, inv))
     await _audited_export(db, request, current_user, inv, "report")
     return Response(pdf, media_type="application/pdf",
@@ -341,7 +341,7 @@ async def export_notebook(
     current_user: User = Depends(get_current_user),
 ):
     """Jupyter notebook replaying the executed steps through ORION's API. Contains no credentials."""
-    inv = await _load(db, investigation_id)
+    inv = await _load(db, investigation_id, current_user)
     notebook = build_notebook(await gather_export_data(db, inv))
     await _audited_export(db, request, current_user, inv, "notebook")
     return Response(json.dumps(notebook, indent=1, ensure_ascii=False), media_type="application/x-ipynb+json",

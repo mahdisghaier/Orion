@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_l2_plus
+from app.core.tenancy import ensure_visible, user_client
 from app.models import FindingSuppression, HuntResult, Incident, SIEMConnection, User
 from app.services.corroboration import enrich_findings
 from app.services.finding_context import PIVOT_FIELD, ContextError, fetch_finding_context
@@ -34,6 +35,7 @@ async def list_findings(
     source_ip: Optional[str] = Query(None),
     host_name: Optional[str] = Query(None),
     hunt_id: Optional[UUID] = Query(None),
+    client_id: Optional[UUID] = Query(None, description="platform-wide users: only this client"),
     corroborated: Optional[bool] = Query(None, description="true: only findings that 2+ SIEMs reported"),
     include_suppressed: bool = Query(False, description="also list findings hidden by a suppression"),
     sort: str = Query("priority", pattern="^(priority|time)$", description="priority (default) or newest first"),
@@ -49,6 +51,9 @@ async def list_findings(
     a fingerprint always appear individually.
     """
     conds = []
+    scope = user_client(current_user) or client_id
+    if scope is not None:
+        conds.append(HuntResult.client_id == scope)
     if siem_type:
         conds.append(HuntResult.siem_type == siem_type)
     if analyst_status:
@@ -108,11 +113,9 @@ async def get_finding(
     current_user: User = Depends(get_current_user),
 ):
     """Get a single finding with full ECS event + raw event."""
-    finding = (await db.execute(
+    finding = ensure_visible((await db.execute(
         select(HuntResult).where(HuntResult.id == finding_id)
-    )).scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+    )).scalar_one_or_none(), current_user, "Finding")
     await enrich_findings(db, [finding])
     return finding
 
@@ -132,11 +135,9 @@ async def get_finding_context(
     The analyst picks one of three fixed pivots (same host, same process, same user)
     and a bounded window; no query text is accepted. Every call is audited.
     """
-    finding = (await db.execute(
+    finding = ensure_visible((await db.execute(
         select(HuntResult).where(HuntResult.id == finding_id)
-    )).scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+    )).scalar_one_or_none(), current_user, "Finding")
 
     try:
         result = await fetch_finding_context(db, finding, pivot, window, limit)
@@ -174,11 +175,9 @@ async def suppress_finding(
     existing UNREVIEWED findings with that fingerprint are flagged now. Findings an analyst
     validated or escalated are never touched, and such a finding cannot be suppressed.
     """
-    finding = (await db.execute(
+    finding = ensure_visible((await db.execute(
         select(HuntResult).where(HuntResult.id == finding_id)
-    )).scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+    )).scalar_one_or_none(), current_user, "Finding")
     if not finding.fingerprint:
         raise HTTPException(status_code=422, detail="Legacy finding without a fingerprint: re-run the hunt first")
     if finding.analyst_status in ("validated", "escalated"):
@@ -188,7 +187,7 @@ async def suppress_finding(
         select(FindingSuppression).where(FindingSuppression.fingerprint == finding.fingerprint)
     )).scalar_one_or_none()
     if suppression is None:
-        suppression = FindingSuppression(fingerprint=finding.fingerprint)
+        suppression = FindingSuppression(fingerprint=finding.fingerprint, client_id=finding.client_id)
         db.add(suppression)
     suppression.comment = payload.comment
     suppression.created_by = current_user.id
@@ -225,11 +224,9 @@ async def unsuppress_finding(
     current_user: User = Depends(require_l2_plus),
 ):
     """Revoke the suppression covering this finding; everything it hid becomes visible again."""
-    finding = (await db.execute(
+    finding = ensure_visible((await db.execute(
         select(HuntResult).where(HuntResult.id == finding_id)
-    )).scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+    )).scalar_one_or_none(), current_user, "Finding")
 
     suppression = (await db.execute(
         select(FindingSuppression).where(
@@ -266,11 +263,9 @@ async def update_finding(
     current_user: User = Depends(require_l2_plus),
 ):
     """Update analyst workflow status + comment on a finding. L2+ only."""
-    finding = (await db.execute(
+    finding = ensure_visible((await db.execute(
         select(HuntResult).where(HuntResult.id == finding_id)
-    )).scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+    )).scalar_one_or_none(), current_user, "Finding")
 
     changes = {}
     if update.analyst_status is not None and update.analyst_status != finding.analyst_status:
@@ -306,18 +301,16 @@ async def escalate_finding(
     current_user: User = Depends(require_l2_plus),
 ):
     """Escalate a finding to an incident. L2+ only."""
-    finding = (await db.execute(
+    finding = ensure_visible((await db.execute(
         select(HuntResult).where(HuntResult.id == finding_id)
-    )).scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+    )).scalar_one_or_none(), current_user, "Finding")
 
     if escalate.incident_id:
-        incident = (await db.execute(
+        incident = ensure_visible((await db.execute(
             select(Incident).where(Incident.id == escalate.incident_id)
-        )).scalar_one_or_none()
-        if not incident:
-            raise HTTPException(status_code=404, detail="Incident not found")
+        )).scalar_one_or_none(), current_user, "Incident")
+        if incident.client_id != finding.client_id:
+            raise HTTPException(status_code=404, detail="Incident not found")      # another client's incident
     else:
         if not escalate.new_incident_title:
             raise HTTPException(
@@ -325,6 +318,7 @@ async def escalate_finding(
                 detail="new_incident_title required when incident_id is not provided"
             )
         incident = Incident(
+            client_id=finding.client_id,
             title=escalate.new_incident_title,
             severity=escalate.new_incident_severity or "medium",
             mitre_techniques=finding.mitre_techniques,

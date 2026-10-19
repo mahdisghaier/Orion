@@ -35,6 +35,22 @@ class RefreshRequest(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────
+# CLIENT
+# ─────────────────────────────────────────────────────────────────
+class ClientCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class ClientResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    is_active: bool
+    created_at: datetime
+
+
+# ─────────────────────────────────────────────────────────────────
 # USER
 # ─────────────────────────────────────────────────────────────────
 class UserBase(BaseModel):
@@ -45,6 +61,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128)
+    client_id: Optional[UUID] = None      # none: a platform-wide user (the SOC's own staff)
 
 
 class UserUpdate(BaseModel):
@@ -57,6 +74,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    client_id: Optional[UUID] = None
     is_active: bool
     created_at: datetime
 
@@ -75,12 +93,14 @@ class SIEMConnectionCreate(SIEMConnectionBase):
     # Elastic:  {url, api_key, index_pattern}
     # Wazuh:    {url, username, password, verify_ssl, index_pattern, host_aliases}
     config: dict
+    client_id: Optional[UUID] = None      # default: the caller's client
 
 
 class SIEMConnectionResponse(SIEMConnectionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    client_id: Optional[UUID] = None
     is_active: bool
     created_at: datetime
     # Never return the encrypted config — only metadata
@@ -156,12 +176,14 @@ class HuntCreate(BaseModel):
     siem_targets: List[UUID] = Field(..., min_length=1)
     time_range: Optional[dict] = None  # {"from": "...", "to": "..."}
     hunt_type: str = Field(default="sigma", pattern="^(sigma|kestrel)$")
+    client_id: Optional[UUID] = None     # default: the client of the targeted connections
 
 
 class HuntResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    client_id: Optional[UUID] = None
     rule_id: Optional[UUID] = None
     created_by: UUID
     siem_targets: List[UUID]
@@ -189,6 +211,7 @@ class HuntResultResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    client_id: Optional[UUID] = None
     hunt_id: UUID
     siem_type: str
     event_time: datetime
@@ -340,6 +363,7 @@ class InvestigationCreate(BaseModel):
     siem_targets: Optional[List[UUID]] = None     # default: every active SIEM connection
     time_range: Optional[dict] = None
     from_finding_id: Optional[UUID] = None
+    client_id: Optional[UUID] = None
 
 
 class StepCreate(BaseModel):
@@ -385,6 +409,7 @@ class InvestigationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    client_id: Optional[UUID] = None
     title: str
     hypothesis: str
     status: str
@@ -426,6 +451,7 @@ class JobCreate(BaseModel):
     interval_hours: int = Field(24, ge=1, le=336)
     enabled: bool = True
     config: JobConfig = Field(default_factory=JobConfig)
+    client_id: Optional[UUID] = None
 
 
 class JobUpdate(BaseModel):
@@ -447,6 +473,7 @@ class JobRunBrief(BaseModel):
 
 class JobResponse(BaseModel):
     id: UUID
+    client_id: Optional[UUID] = None
     name: str
     kind: str
     interval_hours: int

@@ -15,6 +15,8 @@ from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import require_admin
 from app.core.security import hash_password
+from app.core.tenancy import ensure_visible, scoped, user_client
+from app.models import Client
 from app.models import User
 from app.schemas import UserCreate, UserResponse, UserUpdate
 
@@ -33,7 +35,14 @@ async def create_user(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    bound = user_client(current_user)
+    client_id = bound if bound is not None else payload.client_id      # a client's administrator only creates users of that client
+    if bound is not None and payload.client_id not in (None, bound):
+        raise HTTPException(status_code=403, detail="You can only create users of your own client")
+    if client_id is not None and await db.get(Client, client_id) is None:
+        raise HTTPException(status_code=404, detail="Client not found")
     user = User(
+        client_id=client_id,
         email=payload.email,
         full_name=payload.full_name,
         role=payload.role,
@@ -55,7 +64,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
 ):
     """List all users. Admin only."""
-    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    result = await db.execute(scoped(select(User), User.client_id, current_user).order_by(User.created_at.desc()))
     return result.scalars().all()
 
 
@@ -67,9 +76,7 @@ async def get_user(
 ):
     """Get a single user by ID. Admin only."""
     result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = ensure_visible(result.scalar_one_or_none(), current_user, "User")
     return user
 
 
@@ -83,9 +90,7 @@ async def update_user(
 ):
     """Update a user's name, role, or active status. Admin only."""
     result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = ensure_visible(result.scalar_one_or_none(), current_user, "User")
 
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():

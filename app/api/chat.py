@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.tenancy import client_of_connections
 from app.models import User, LLMAudit
 from app.services.agent.graph import agent_graph
 from app.services.agent.state import ChatState
@@ -84,6 +85,7 @@ async def send_message(
             "intent": None,
             "sigma_rule": None,
             "siem_targets": [str(t) for t in request.siem_targets],
+            "client_id": str(await client_of_connections(db, current_user, request.siem_targets)),
             "needs_confirmation": False,
             "confirmed": None,
             "hunt_id": None,
@@ -122,6 +124,8 @@ async def send_message(
             error=result.get("error"),
         )
         
+    except HTTPException:
+        raise                                  # a client mismatch is a 404, not an agent error
     except Exception as e:
         if _ai_unavailable(e):
             raise HTTPException(status_code=503, detail=f"The AI service is unavailable right now ({type(e).__name__}). "
@@ -172,6 +176,7 @@ async def confirm_hunt(
             "intent": "Confirmed by analyst",
             "sigma_rule": request.sigma_rule,
             "siem_targets": [str(t) for t in request.siem_targets],
+            "client_id": str(await client_of_connections(db, current_user, request.siem_targets)),
             "needs_confirmation": False,
             "confirmed": True,
             "hunt_id": None,
@@ -225,6 +230,8 @@ async def confirm_hunt(
             error=state.get("error"),
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()

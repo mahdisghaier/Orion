@@ -44,10 +44,11 @@ def rule_status(rule_yaml: str, siem_type: str, profile: Optional[dict]) -> Tupl
     return "runnable", []
 
 
-async def active_connections_with_profiles(db: AsyncSession) -> List[dict]:
-    connections = (await db.execute(
-        select(SIEMConnection).where(SIEMConnection.is_active.is_(True)).order_by(SIEMConnection.created_at)
-    )).scalars().all()
+async def active_connections_with_profiles(db: AsyncSession, client_id=None) -> List[dict]:
+    query = select(SIEMConnection).where(SIEMConnection.is_active.is_(True))
+    if client_id is not None:
+        query = query.where(SIEMConnection.client_id == client_id)
+    connections = (await db.execute(query.order_by(SIEMConnection.created_at))).scalars().all()
     profiles = {
         row.siem_connection_id: row.profile
         for row in (await db.execute(select(SIEMProfile))).scalars().all()

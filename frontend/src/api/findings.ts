@@ -31,6 +31,7 @@ export interface Finding {
   reviewed_by: string | null
   reviewed_at: string | null
   incident_id: string | null
+  client_id: string | null
   created_at: string
 }
 
@@ -54,6 +55,7 @@ export interface FindingFilters {
   source_ip?: string
   host_name?: string
   hunt_id?: string
+  client_id?: string
 }
 
 export async function getFindings(filters: FindingFilters = {}): Promise<PaginatedFindings> {
@@ -69,6 +71,7 @@ export async function getFindings(filters: FindingFilters = {}): Promise<Paginat
   if (filters.source_ip) params.append('source_ip', filters.source_ip)
   if (filters.host_name) params.append('host_name', filters.host_name)
   if (filters.hunt_id) params.append('hunt_id', filters.hunt_id)
+  if (filters.client_id) params.append('client_id', filters.client_id)
 
   const { data } = await api.get(`/findings/?${params.toString()}`)
   return data

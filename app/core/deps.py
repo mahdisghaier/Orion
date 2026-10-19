@@ -105,3 +105,10 @@ def require_role(*allowed_roles: str) -> Callable:
 require_admin = require_role("admin")
 require_l2_plus = require_role("soc_l2", "soc_l3", "admin")
 require_l3_plus = require_role("soc_l3", "admin")
+
+
+async def require_platform_admin(current_user: User = Depends(require_admin)) -> User:
+    """An administrator of the SOC itself, not of one client: only they create clients and platform-wide users."""
+    if getattr(current_user, "client_id", None) is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires a platform-wide administrator")
+    return current_user

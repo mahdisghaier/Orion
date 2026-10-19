@@ -7,6 +7,7 @@ event MEANS (host, process, command line, user, action, network endpoints, rule)
 timestamps are left out on purpose: they change between samples of the same behaviour.
 """
 import hashlib
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Tuple
@@ -24,13 +25,36 @@ class EventGroup:
     last_seen: datetime
 
 
+_IPV4 = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
+_HEX_ID = re.compile(r"\b[0-9a-f]{8,}\b")
+_MIXED_TOKEN = re.compile(r"\b(?=[0-9a-z]*\d)[0-9a-z]{4,}\b")   # random names such as run3 or 3fa9
+_NUMBER = re.compile(r"\d+")
+
+
+def normalise_command_line(text) -> str:
+    """The command line with its variable parts masked, so repeats of one behaviour share a fingerprint.
+
+    Port numbers, counts, durations, process identifiers, random temporary names (any word of four or more characters
+    that contains a digit) and hexadecimal identifiers
+    change from one run of the same command to the next (``nc -l 127.0.0.1 38831`` and ``nc -l 127.0.0.1 21106``
+    are the same behaviour). Addresses are kept, because the destination of a command matters. The finding keeps the
+    real command line of its newest event; only the fingerprint uses the masked form.
+    """
+    if not text:
+        return ""
+    lowered = str(text).lower()
+    addresses = _IPV4.findall(lowered)
+    masked = _NUMBER.sub("#", _MIXED_TOKEN.sub("#", _HEX_ID.sub("#", _IPV4.sub("@", lowered))))
+    return masked + "|" + ",".join(addresses)
+
+
 def fingerprint(siem_type: str, event: dict, fields: dict) -> str:
     parts = [
         siem_type,
         fields.get("host_name"),
         fields.get("process_name"),
         get_nested(event, "process.executable"),
-        fields.get("process_command_line"),
+        normalise_command_line(fields.get("process_command_line")),
         fields.get("user_name"),
         fields.get("action"),
         fields.get("source_ip"),
@@ -42,6 +66,13 @@ def fingerprint(siem_type: str, event: dict, fields: dict) -> str:
     ]
     raw = "\x1f".join("" if p is None else str(p).lower() for p in parts)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def for_client(fp: str, client_id) -> str:
+    """A fingerprint inside one client. The same behaviour of two clients must not share a suppression or a history."""
+    if client_id is None:
+        return fp
+    return hashlib.sha1(f"{fp}\x1f{client_id}".encode("utf-8")).hexdigest()[:16]
 
 
 def group_events(siem_type: str, items: Iterable[Tuple[dict, dict]]) -> List[EventGroup]:

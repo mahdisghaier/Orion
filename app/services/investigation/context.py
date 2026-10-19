@@ -156,6 +156,8 @@ async def build_context(db: AsyncSession, inv: Investigation) -> dict:
     if inv.source_finding_id:
         cond.append(HuntResult.id == inv.source_finding_id)
     query = select(HuntResult).where(HuntResult.suppression_id.is_(None))
+    if inv.client_id is not None:
+        query = query.where(HuntResult.client_id == inv.client_id)       # an investigation never reads another client's findings
     if cond:
         from sqlalchemy import or_
         query = query.where(or_(*cond))

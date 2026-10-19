@@ -12,7 +12,7 @@ from app.models import FindingSuppression, Hunt, HuntResult, SIEMConnection, SIE
 from app.services.connectors.factory import get_connector, ConnectorError
 from app.services.ecs import extract_ecs_fields, extract_mitre_from_tags
 from app.services.correlation import Candidate, correlate
-from app.services.grouping import group_events
+from app.services.grouping import for_client, group_events
 from app.services.prioritization import rescore_findings
 from app.services.data_profile import blind_spots
 from app.services.sigma_engine import convert_sigma_rule, rule_fields, unmapped_fields
@@ -33,6 +33,7 @@ class HuntRunner:
         rule_id: Optional[UUID] = None,
         rule_yaml: Optional[str] = None,
         time_range: Optional[dict] = None,
+        client_id: Optional[UUID] = None,
     ) -> Hunt:
         # 1. Resolve the Sigma rule YAML
         if rule_id:
@@ -77,6 +78,7 @@ class HuntRunner:
 
         # 3. Create the hunt record
         hunt = Hunt(
+            client_id=client_id,
             rule_id=rule_id,
             created_by=created_by,
             siem_targets=siem_targets,
@@ -145,6 +147,7 @@ class HuntRunner:
             select(SIEMConnection).where(
                 SIEMConnection.id.in_(hunt.siem_targets),
                 SIEMConnection.is_active == True,
+                SIEMConnection.client_id == hunt.client_id if hunt.client_id is not None else True,
             )
         )
         connections = result.scalars().all()
@@ -231,12 +234,13 @@ class HuntRunner:
             items = [(event, extract_ecs_fields(event)) for event in result]
             for group in group_events(siem_type, items):
                 finding = HuntResult(
+                    client_id=hunt.client_id,
                     hunt_id=hunt.id,
                     siem_connection_id=conn.id,
                     siem_type=siem_type,
                     ecs_event=group.event,
                     raw_event=group.event,
-                    fingerprint=group.fingerprint,
+                    fingerprint=for_client(group.fingerprint, hunt.client_id),
                     occurrence_count=group.count,
                     first_seen=group.first_seen,
                     last_seen=group.last_seen,

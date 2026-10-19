@@ -11,6 +11,10 @@
           <option value="priority">Sort: priority</option>
           <option value="time">Sort: newest</option>
         </select>
+        <select v-if="auth.isPlatform && clients.length > 1" v-model="filters.client_id" @change="loadFindings" class="px-3 py-2 border rounded text-sm" title="Client">
+          <option value="">All clients</option>
+          <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
         <select v-model="filters.siem_type" @change="loadFindings" class="px-3 py-2 border rounded text-sm">
           <option value="">All SIEMs</option>
           <option value="elastic">Elastic</option>
@@ -169,7 +173,11 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import { getFindings, type Finding } from '@/api/findings'
+import { getClients, type Client } from '@/api/clients'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
+const clients = ref<Client[]>([])
 const findings = ref<Finding[]>([])
 const total = ref(0)
 const loading = ref(true)
@@ -185,6 +193,7 @@ const filters = reactive({
   include_suppressed: false,
   show_repeats: false,
   sort: 'priority' as 'priority' | 'time',
+  client_id: '',
 })
 
 async function loadFindings() {
@@ -194,6 +203,7 @@ async function loadFindings() {
     const data = await getFindings({
       page: filters.page,
       page_size: filters.page_size,
+      client_id: filters.client_id || undefined,
       siem_type: filters.siem_type || undefined,
       analyst_status: filters.analyst_status || undefined,
       corroborated: filters.corroborated === '' ? undefined : filters.corroborated === 'true',
@@ -257,6 +267,7 @@ function statusClass(status: string): string {
 
 onMounted(() => {
   loadFindings()
+  if (auth.isPlatform) getClients().then(c => (clients.value = c)).catch(() => {})
 })
 
 // "elastic x28, wazuh x2" instead of one word per corroborating finding

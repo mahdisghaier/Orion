@@ -27,6 +27,7 @@
           <p class="text-xs text-[#7a9bb8]">Signed in as</p>
           <p class="text-sm font-medium truncate">{{ auth.user?.email }}</p>
           <p class="text-[10px] text-[#4da8da] uppercase tracking-wider mt-1">{{ auth.user?.role }}</p>
+          <p class="text-[10px] text-[#7a9bb8] mt-1">{{ auth.isPlatform ? 'All clients' : 'Client user' }}</p>
         </div>
         <button
           @click="handleLogout"
@@ -47,7 +48,7 @@
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Target, Bug, Server, Users, LogOut, MessageCircle, Search, ShieldAlert, Grid3x3, Bell } from 'lucide-vue-next'
+import { Target, Bug, Server, Users, LogOut, MessageCircle, Search, ShieldAlert, Grid3x3, Bell, Building2 } from 'lucide-vue-next'
 import { notificationSummary } from '@/api/intel'
 
 const auth = useAuthStore()
@@ -84,6 +85,7 @@ const navItems = computed(() => {
     { path: '/notifications', label: 'Notifications', icon: Bell, badge: unread.value },
   ]
   if (auth.isAdmin) {
+    if (auth.isPlatform) items.push({ path: '/clients', label: 'Clients', icon: Building2 })
     items.push({ path: '/siem', label: 'SIEM Connections', icon: Server })
     items.push({ path: '/users', label: 'Users', icon: Users })
   }

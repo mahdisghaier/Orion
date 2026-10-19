@@ -7,6 +7,7 @@ interface User {
   email: string
   full_name: string
   role: 'admin' | 'soc_l1' | 'soc_l2' | 'soc_l3'
+  client_id: string | null
   is_active: boolean
   created_at: string
 }
@@ -19,6 +20,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value)
   const role = computed(() => user.value?.role)
   const isAdmin = computed(() => role.value === 'admin')
+  // staff of the SOC itself (no client): they work for every client
+  const isPlatform = computed(() => !!user.value && !user.value.client_id)
   const isL2Plus = computed(() => ['soc_l2', 'soc_l3', 'admin'].includes(role.value || ''))
 
   async function login(email: string, password: string) {
@@ -53,5 +56,5 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/login'
   }
 
-  return { user, loading, checked, isAuthenticated, role, isAdmin, isL2Plus, login, fetchUser, logout }
+  return { user, loading, checked, isAuthenticated, role, isAdmin, isPlatform, isL2Plus, login, fetchUser, logout }
 })

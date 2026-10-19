@@ -14,6 +14,7 @@ One run, in order:
 without a rule cannot be cleared by a hunt, and an unreachable feed makes the run incomplete rather than clean.
 """
 import ipaddress
+from functools import partial
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Awaitable, Callable, Dict, List, Optional
@@ -54,9 +55,9 @@ class Live:
     error: Optional[str] = None
 
 
-async def _default_hunt(db: AsyncSession, created_by, siem_ids, rule_yaml: str, time_range: dict):
+async def _default_hunt(db: AsyncSession, created_by, siem_ids, rule_yaml: str, time_range: dict, client_id=None):
     from app.services.hunt_runner import HuntRunner
-    return await HuntRunner(db).create_and_run(created_by=created_by, siem_targets=siem_ids, rule_yaml=rule_yaml, time_range=time_range)
+    return await HuntRunner(db).create_and_run(created_by=created_by, siem_targets=siem_ids, rule_yaml=rule_yaml, time_range=time_range, client_id=client_id)
 
 
 def clean_custom_iocs(raw: dict) -> Dict[str, List[str]]:
@@ -124,9 +125,12 @@ def decide(summary: dict) -> tuple:
 
 # ── phases ───────────────────────────────────────────────────────────────────────
 
-async def _prepare_connections(db: AsyncSession, deps: Deps) -> List[Live]:
+async def _prepare_connections(db: AsyncSession, deps: Deps, client_id=None) -> List[Live]:
     live: List[Live] = []
-    rows = (await db.execute(select(SIEMConnection).where(SIEMConnection.is_active.is_(True)).order_by(SIEMConnection.created_at))).scalars().all()
+    query = select(SIEMConnection).where(SIEMConnection.is_active.is_(True))
+    if client_id is not None:
+        query = query.where(SIEMConnection.client_id == client_id)      # a client's job only reads that client's SIEMs
+    rows = (await db.execute(query.order_by(SIEMConnection.created_at))).scalars().all()
     for conn in rows:
         item = Live(conn.id, conn.name, conn.type, None, None)
         try:
@@ -178,7 +182,7 @@ async def _technique_hunts(db, deps: Deps, job: ScheduledJob, cfg: dict, attack:
                 out["executed"].append(record)
                 if runnable:
                     try:
-                        hunt = await (deps.hunt or _default_hunt)(db, admin_id, [c.id for c in runnable], rule["yaml"], {"from": since.isoformat().replace("+00:00", "Z")})
+                        hunt = await (deps.hunt or partial(_default_hunt, client_id=getattr(job, "client_id", None)))(db, admin_id, [c.id for c in runnable], rule["yaml"], {"from": since.isoformat().replace("+00:00", "Z")})
                         record["hunt_id"] = str(hunt.id)
                         record["findings"] = hunt.total_hits
                         record["top"] = await (deps.top_findings or _top_findings)(db, hunt)
@@ -283,7 +287,7 @@ async def run_job(db: AsyncSession, job: ScheduledJob, trigger: str = "schedule"
         since = max(since, now - timedelta(days=14))
         admin_id = job.created_by or await (deps.admin_id or _first_admin)(db)
 
-        live = await (deps.connections or (lambda session: _prepare_connections(session, deps)))(db)
+        live = await (deps.connections or (lambda session: _prepare_connections(session, deps, getattr(job, "client_id", None))))(db)
         feed_data, feed_meta = {}, {}
         for source in feeds.FEEDS:
             payload, meta = await deps.load_feed(db, source)
@@ -332,4 +336,4 @@ def _notification(run: JobRun, job: ScheduledJob) -> Notification:
     body = summary.get("headline", "")
     if limits:
         body += "\nNot checked: " + "; ".join(limits[:4]) + ("; ..." if len(limits) > 4 else "")
-    return Notification(kind="threat_intel", title=title, body=body[:2000], severity=severity, run_id=run.id)
+    return Notification(client_id=getattr(job, "client_id", None), kind="threat_intel", title=title, body=body[:2000], severity=severity, run_id=run.id)

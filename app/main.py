@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.csrf import csrf_ok
 from app.core.database import engine
 from app.services.scheduler import scheduler_loop
-from app.api import auth, users, siem, hunts, findings, chat, sigma, investigations, coverage, jobs, notifications
+from app.api import auth, users, siem, hunts, findings, chat, sigma, investigations, coverage, jobs, notifications, clients
 
 
 @asynccontextmanager
@@ -52,6 +52,7 @@ async def csrf_guard(request: Request, call_next):
 
 # Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(siem.router, prefix="/api/siem", tags=["siem"])
 app.include_router(hunts.router, prefix="/api/hunts", tags=["hunts"])

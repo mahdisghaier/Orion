@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import log_action
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.tenancy import ensure_visible, scoped, user_client
 from app.models import Notification, User
 from app.schemas import NotificationResponse
 
@@ -24,7 +25,7 @@ _SEVERITY_ORDER = {"critical": 3, "warning": 2, "info": 1}
 
 @router.get("/", response_model=list[NotificationResponse])
 async def list_notifications(unread: bool = False, limit: int = 50, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    query = select(Notification).order_by(Notification.created_at.desc()).limit(max(1, min(limit, 200)))
+    query = scoped(select(Notification), Notification.client_id, current_user).order_by(Notification.created_at.desc()).limit(max(1, min(limit, 200)))
     if unread:
         query = query.where(Notification.acknowledged_at.is_(None))
     return (await db.execute(query)).scalars().all()
@@ -33,7 +34,8 @@ async def list_notifications(unread: bool = False, limit: int = 50, db: AsyncSes
 @router.get("/summary")
 async def summary(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     rows = (await db.execute(
-        select(Notification.severity, func.count()).where(Notification.acknowledged_at.is_(None)).group_by(Notification.severity)
+        scoped(select(Notification.severity, func.count()).where(Notification.acknowledged_at.is_(None)), Notification.client_id, current_user)
+        .group_by(Notification.severity)
     )).all()
     counts = {severity: n for severity, n in rows}
     worst = max(counts, key=lambda s: _SEVERITY_ORDER[s]) if counts else None
@@ -43,7 +45,7 @@ async def summary(db: AsyncSession = Depends(get_db), current_user: User = Depen
 @router.post("/acknowledge-all")
 async def acknowledge_all(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(
-        update(Notification).where(Notification.acknowledged_at.is_(None))
+        scoped(update(Notification).where(Notification.acknowledged_at.is_(None)), Notification.client_id, current_user)
         .values(acknowledged_at=datetime.now(timezone.utc), acknowledged_by=current_user.id)
     )
     await log_action(db, user_id=current_user.id, action="notification.acknowledge_all", metadata={"count": result.rowcount}, request=request)
@@ -53,9 +55,7 @@ async def acknowledge_all(request: Request, db: AsyncSession = Depends(get_db), 
 
 @router.post("/{notification_id}/acknowledge", response_model=NotificationResponse)
 async def acknowledge(notification_id: UUID, request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    note = await db.get(Notification, notification_id)
-    if note is None:
-        raise HTTPException(status_code=404, detail="Notification not found")
+    note = ensure_visible(await db.get(Notification, notification_id), current_user, "Notification")
     if note.acknowledged_at is None:
         note.acknowledged_at, note.acknowledged_by = datetime.now(timezone.utc), current_user.id
         await log_action(db, user_id=current_user.id, action="notification.acknowledge", target_type="notification", target_id=note.id, request=request)

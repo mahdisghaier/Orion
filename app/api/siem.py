@@ -9,6 +9,7 @@
 - DELETE /api/siem/{id}      — deactivate a connection (soft delete)
 """
 import time
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -19,6 +20,7 @@ from app.core.audit import log_action
 from app.core.crypto import encrypt_config
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
+from app.core.tenancy import client_for_new_object, ensure_visible, scoped
 from app.models import SIEMConnection, SIEMProfile, User
 from app.schemas import SIEMConnectionCreate, SIEMConnectionResponse, SIEMConnectionTestResult, SIEMProfileResponse
 from app.services.connectors.factory import ConnectorError, get_connector
@@ -41,7 +43,9 @@ async def create_siem_connection(
                 status_code=422,
                 detail=f"Wazuh config requires: url, username, password (missing: {', '.join(missing)})",
             )
+    client_id = await client_for_new_object(db, current_user, payload.client_id)
     connection = SIEMConnection(
+        client_id=client_id,
         name=payload.name,
         type=payload.type,
         config_encrypted=encrypt_config(payload.config),
@@ -52,7 +56,7 @@ async def create_siem_connection(
     await db.flush()
     # name and type only: the config holds secrets and is never written to the audit log
     await log_action(db, user_id=current_user.id, action="siem.create", target_type="siem_connection", target_id=connection.id,
-                     metadata={"name": payload.name, "type": payload.type}, request=request)
+                     metadata={"name": payload.name, "type": payload.type, "client_id": str(client_id)}, request=request)
     await db.commit()
     await db.refresh(connection)
     return connection
@@ -60,11 +64,13 @@ async def create_siem_connection(
 
 @router.get("/", response_model=list[SIEMConnectionResponse])
 async def list_siem_connections(
+    client_id: Optional[UUID] = Query(None, description="platform-wide users: only this client's connections"),
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all SIEM connections (metadata only — config never returned)."""
-    result = await db.execute(select(SIEMConnection).order_by(SIEMConnection.created_at.desc()))
+    """List the SIEM connections of the caller's client (all clients for platform-wide staff); config is never returned."""
+    result = await db.execute(scoped(select(SIEMConnection), SIEMConnection.client_id, current_user, client_id)
+                              .order_by(SIEMConnection.created_at.desc()))
     return result.scalars().all()
 
 
@@ -76,9 +82,7 @@ async def get_siem_connection(
 ):
     """Get a single SIEM connection's metadata."""
     result = await db.execute(select(SIEMConnection).where(SIEMConnection.id == connection_id))
-    connection = result.scalar_one_or_none()
-    if not connection:
-        raise HTTPException(status_code=404, detail="SIEM connection not found")
+    connection = ensure_visible(result.scalar_one_or_none(), current_user, "SIEM connection")
     return connection
 
 
@@ -90,9 +94,7 @@ async def test_siem_connection(
 ):
     """Check a stored connection end to end (decrypt config, reach the SIEM, authenticate)."""
     result = await db.execute(select(SIEMConnection).where(SIEMConnection.id == connection_id))
-    connection = result.scalar_one_or_none()
-    if not connection:
-        raise HTTPException(status_code=404, detail="SIEM connection not found")
+    connection = ensure_visible(result.scalar_one_or_none(), current_user, "SIEM connection")
 
     try:
         connector = get_connector(connection)
@@ -118,11 +120,9 @@ async def collect_siem_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """Measure what this SIEM can see (read-only queries) and store the result, replacing the previous one."""
-    connection = (await db.execute(
+    connection = ensure_visible((await db.execute(
         select(SIEMConnection).where(SIEMConnection.id == connection_id)
-    )).scalar_one_or_none()
-    if not connection:
-        raise HTTPException(status_code=404, detail="SIEM connection not found")
+    )).scalar_one_or_none(), current_user, "SIEM connection")
     if not connection.is_active:
         raise HTTPException(status_code=409, detail="SIEM connection is not active")
 
@@ -160,6 +160,7 @@ async def get_siem_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """Latest stored profile of a connection; 404 if it was never profiled."""
+    ensure_visible(await db.get(SIEMConnection, connection_id), current_user, "SIEM connection")
     row = (await db.execute(
         select(SIEMProfile).where(SIEMProfile.siem_connection_id == connection_id)
     )).scalar_one_or_none()
@@ -181,9 +182,7 @@ async def deactivate_siem_connection(
     may still reference this row for historical findings.
     """
     result = await db.execute(select(SIEMConnection).where(SIEMConnection.id == connection_id))
-    connection = result.scalar_one_or_none()
-    if not connection:
-        raise HTTPException(status_code=404, detail="SIEM connection not found")
+    connection = ensure_visible(result.scalar_one_or_none(), current_user, "SIEM connection")
 
     connection.is_active = False
     await log_action(db, user_id=current_user.id, action="siem.deactivate", target_type="siem_connection", target_id=connection_id,
