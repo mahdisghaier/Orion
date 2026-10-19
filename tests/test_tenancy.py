@@ -171,6 +171,23 @@ class CrossClientAccess(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
 
+class OwnAccount(unittest.TestCase):
+    def tearDown(self):
+        app.dependency_overrides.clear()
+
+    def test_an_administrator_cannot_disable_or_demote_their_own_account(self):
+        me = user(None, "admin")
+
+        async def db():
+            yield FakeDb(row=me)
+
+        app.dependency_overrides[get_db] = db
+        app.dependency_overrides[get_current_user] = lambda: me
+        http = TestClient(app, raise_server_exceptions=False)
+        self.assertEqual(http.patch(f"/api/users/{me.id}", json={"is_active": False}).status_code, 400)
+        self.assertEqual(http.patch(f"/api/users/{me.id}", json={"role": "soc_l1"}).status_code, 400)
+
+
 class NotificationsAndJobs(unittest.TestCase):
     def test_a_job_notification_carries_the_clients_id(self):
         from app.services.threat_intel.runner import _notification

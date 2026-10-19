@@ -93,6 +93,8 @@ async def update_user(
     user = ensure_visible(result.scalar_one_or_none(), current_user, "User")
 
     update_data = payload.model_dump(exclude_unset=True)
+    if user.id == current_user.id and (update_data.get("is_active") is False or ("role" in update_data and update_data["role"] != user.role)):
+        raise HTTPException(status_code=400, detail="You cannot disable your own account or change your own role")
     for field, value in update_data.items():
         setattr(user, field, value)
 
