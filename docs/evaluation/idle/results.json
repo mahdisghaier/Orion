@@ -1,0 +1,349 @@
+{
+ "window": [
+  "2026-10-19T12:16:00Z",
+  "2026-10-19T14:15:00Z"
+ ],
+ "host": "orion-lab",
+ "siems": {
+  "Elastic (Auditbeat, orion-lab)": {
+   "type": "elastic",
+   "process_events": 321,
+   "behaviours": 35,
+   "rules": [
+    {
+     "technique": "T1059.004",
+     "title": "Reverse shell one-liner",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1046",
+     "title": "Network discovery tool executed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1105",
+     "title": "Download piped to a shell or saved to a temporary folder",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1070.003",
+     "title": "Shell history cleared",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1070.002",
+     "title": "System logs removed or truncated",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1562.001",
+     "title": "Security tooling stopped or disabled",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1136.001",
+     "title": "Local account created",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1053.003",
+     "title": "Cron table edited",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1548.001",
+     "title": "Setuid or setgid bit set",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1003.008",
+     "title": "Shadow password file accessed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1565.001",
+     "title": "Critical system file changed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1049",
+     "title": "Network connections listed",
+     "status": "ran",
+     "events": 38,
+     "behaviours": 2,
+     "examples": [
+      "netstat -tulpn",
+      "sh -c -- netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]]\\+\\ \\+\\("
+     ]
+    },
+    {
+     "technique": "T1016",
+     "title": "Network configuration listed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1082",
+     "title": "System information gathered",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1087",
+     "title": "Accounts enumerated",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1140",
+     "title": "Encoded content decoded on the command line",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1027.010",
+     "title": "Decoded content piped into a shell",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1059.006",
+     "title": "Python used for a socket or terminal spawn",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1074.001",
+     "title": "Archive written to a staging folder",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1090",
+     "title": "Tunnel or proxy set up",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    }
+   ]
+  },
+  "Wazuh": {
+   "type": "wazuh",
+   "process_events": 321,
+   "behaviours": 35,
+   "rules": [
+    {
+     "technique": "T1059.004",
+     "title": "Reverse shell one-liner",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1046",
+     "title": "Network discovery tool executed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1105",
+     "title": "Download piped to a shell or saved to a temporary folder",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1070.003",
+     "title": "Shell history cleared",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1070.002",
+     "title": "System logs removed or truncated",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1562.001",
+     "title": "Security tooling stopped or disabled",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1136.001",
+     "title": "Local account created",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1053.003",
+     "title": "Cron table edited",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1548.001",
+     "title": "Setuid or setgid bit set",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1003.008",
+     "title": "Shadow password file accessed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1565.001",
+     "title": "Critical system file changed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1049",
+     "title": "Network connections listed",
+     "status": "ran",
+     "events": 38,
+     "behaviours": 2,
+     "examples": [
+      "netstat -tulpn",
+      "sh -c -- netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]]\\+\\ \\+\\("
+     ]
+    },
+    {
+     "technique": "T1016",
+     "title": "Network configuration listed",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1082",
+     "title": "System information gathered",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1087",
+     "title": "Accounts enumerated",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1140",
+     "title": "Encoded content decoded on the command line",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1027.010",
+     "title": "Decoded content piped into a shell",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1059.006",
+     "title": "Python used for a socket or terminal spawn",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1074.001",
+     "title": "Archive written to a staging folder",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    },
+    {
+     "technique": "T1090",
+     "title": "Tunnel or proxy set up",
+     "status": "ran",
+     "events": 0,
+     "behaviours": 0,
+     "examples": []
+    }
+   ]
+  }
+ }
+}
