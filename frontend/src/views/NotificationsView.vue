@@ -3,7 +3,7 @@
     <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
       <div>
         <h1 class="text-2xl font-bold text-[#142840]">Notifications</h1>
-        <p class="text-sm text-gray-500 mt-1">Notes from background checks, including the ones that found nothing.</p>
+        <p class="text-sm text-gray-500 mt-1">Results of scheduled checks, including checks that found nothing.</p>
       </div>
       <button @click="markAll" :disabled="!items.some(n => !n.acknowledged_at)" class="px-4 py-2 border rounded text-sm hover:bg-gray-50 disabled:opacity-40">
         Acknowledge all

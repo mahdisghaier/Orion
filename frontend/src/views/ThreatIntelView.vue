@@ -3,8 +3,8 @@
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-[#142840]">Threat intelligence</h1>
       <p class="text-sm text-gray-500 mt-1 max-w-3xl">
-        On a schedule, ORION reads what attackers are doing now (exploited CVEs, recent campaigns, malicious addresses) and tests it
-        against the data it can see. &ldquo;Nothing found&rdquo; always comes with the list of what it could <em>not</em> check.
+        Scheduled checks of current threat intelligence (exploited vulnerabilities, recent campaigns, malicious indicators) against
+        the data of the connected SIEMs. Each result lists what could not be checked.
       </p>
     </div>
 

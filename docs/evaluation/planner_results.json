@@ -1,119 +1,11 @@
 {
  "meta": {
-  "date": "2026-10-14 21:40",
-  "model": "gemini-flash-latest"
+  "date": "2026-10-19 13:21",
+  "model": "gemini-3.6-flash"
  },
  "results": [
   {
    "hypothesis": "An attacker left a netcat listener on the workstation to keep access.",
-   "ai_answered": true,
-   "notes": [],
-   "models": [
-    "gemini-flash-latest"
-   ],
-   "accepted_rules": 1,
-   "accepted_pivots": 2,
-   "rejected": 0,
-   "rejection_reasons": [],
-   "rule_runs": [
-    {
-     "siem": "wazuh",
-     "ok": true,
-     "events": 0
-    },
-    {
-     "siem": "elastic",
-     "ok": true,
-     "events": 0
-    }
-   ]
-  },
-  {
-   "hypothesis": "Someone is downloading tools onto the workstation with curl or wget.",
-   "ai_answered": true,
-   "notes": [
-    "1 AI proposal(s) were rejected by validation"
-   ],
-   "models": [
-    "gemini-flash-latest"
-   ],
-   "accepted_rules": 1,
-   "accepted_pivots": 1,
-   "rejected": 1,
-   "rejection_reasons": [
-    "duplicate of a step already proposed or taken"
-   ],
-   "rule_runs": [
-    {
-     "siem": "wazuh",
-     "ok": true,
-     "events": 0
-    },
-    {
-     "siem": "elastic",
-     "ok": true,
-     "events": 19
-    }
-   ]
-  },
-  {
-   "hypothesis": "An attacker is hiding their tracks by clearing the shell history.",
-   "ai_answered": true,
-   "notes": [
-    "1 AI proposal(s) were rejected by validation"
-   ],
-   "models": [
-    "gemini-flash-latest"
-   ],
-   "accepted_rules": 1,
-   "accepted_pivots": 1,
-   "rejected": 1,
-   "rejection_reasons": [
-    "duplicate of a step already proposed or taken"
-   ],
-   "rule_runs": [
-    {
-     "siem": "wazuh",
-     "ok": true,
-     "events": 0
-    },
-    {
-     "siem": "elastic",
-     "ok": true,
-     "events": 62
-    }
-   ]
-  },
-  {
-   "hypothesis": "A reverse shell was started through bash.",
-   "ai_answered": true,
-   "notes": [
-    "1 AI proposal(s) were rejected by validation"
-   ],
-   "models": [
-    "gemini-flash-latest"
-   ],
-   "accepted_rules": 1,
-   "accepted_pivots": 1,
-   "rejected": 1,
-   "rejection_reasons": [
-    "duplicate of a step already proposed or taken"
-   ],
-   "rule_runs": [
-    {
-     "siem": "wazuh",
-     "ok": true,
-     "events": 0
-    },
-    {
-     "siem": "elastic",
-     "ok": true,
-     "events": 5
-    }
-   ]
-  },
-  {
-   "hypothesis": "A user is running unusual scripts from the /tmp directory.",
    "ai_answered": false,
    "notes": [
     "AI planner did not answer within 90s; showing rule-based suggestions only"
@@ -124,6 +16,112 @@
    "rejected": 0,
    "rejection_reasons": [],
    "rule_runs": []
+  },
+  {
+   "hypothesis": "Someone is downloading tools onto the workstation with curl or wget.",
+   "ai_answered": true,
+   "notes": [],
+   "models": [
+    "gemini-3.6-flash"
+   ],
+   "accepted_rules": 1,
+   "accepted_pivots": 2,
+   "rejected": 0,
+   "rejection_reasons": [],
+   "rule_runs": [
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 716
+    },
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 316
+    }
+   ]
+  },
+  {
+   "hypothesis": "An attacker is hiding their tracks by clearing the shell history.",
+   "ai_answered": true,
+   "notes": [],
+   "models": [
+    "gemini-3.6-flash"
+   ],
+   "accepted_rules": 1,
+   "accepted_pivots": 1,
+   "rejected": 0,
+   "rejection_reasons": [],
+   "rule_runs": [
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 817
+    },
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 496
+    }
+   ]
+  },
+  {
+   "hypothesis": "A reverse shell was started through bash.",
+   "ai_answered": true,
+   "notes": [],
+   "models": [
+    "gemini-3.6-flash"
+   ],
+   "accepted_rules": 2,
+   "accepted_pivots": 1,
+   "rejected": 0,
+   "rejection_reasons": [],
+   "rule_runs": [
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 6
+    },
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 6
+    },
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 0
+    },
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 167
+    }
+   ]
+  },
+  {
+   "hypothesis": "A user is running unusual scripts from the /tmp directory.",
+   "ai_answered": true,
+   "notes": [],
+   "models": [
+    "gemini-3.6-flash"
+   ],
+   "accepted_rules": 1,
+   "accepted_pivots": 1,
+   "rejected": 0,
+   "rejection_reasons": [],
+   "rule_runs": [
+    {
+     "siem": "elastic",
+     "ok": true,
+     "events": 953
+    },
+    {
+     "siem": "wazuh",
+     "ok": true,
+     "events": 611
+    }
+   ]
   }
  ]
 }

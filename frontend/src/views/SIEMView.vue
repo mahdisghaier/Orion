@@ -3,8 +3,7 @@
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-[#142840]">SIEM Connections</h1>
       <p class="text-sm text-gray-500 mt-1">
-        What each connected SIEM can actually see. A hunt that finds nothing in a blind spot means
-        &ldquo;could not look&rdquo;, not &ldquo;clean&rdquo;.
+        Data profile of each connected SIEM. An empty result on a blind field means the data was not available, not that the activity did not occur.
       </p>
     </div>
 

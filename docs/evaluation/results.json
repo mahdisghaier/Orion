@@ -1,10 +1,10 @@
 {
  "meta": {
-  "date": "2026-10-14 21:57",
-  "commit": "ab09db2",
+  "date": "2026-10-19 13:13",
+  "commit": "cb2a100",
   "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
   "python": "3.12.13",
-  "run_id": "215625"
+  "run_id": "131100"
  },
  "techniques": [
   {
@@ -12,28 +12,7 @@
    "name": "Network service discovery: a netcat listener",
    "tactic": "discovery",
    "per_siem": {
-    "Local Wazuh (wsl-ubuntu)": {
-     "type": "wazuh",
-     "runnable": true,
-     "reasons": [],
-     "variants": {
-      "long": {
-       "instances": 1,
-       "detected": 1,
-       "latency_s_median": 170
-      },
-      "short": {
-       "instances": 30,
-       "detected": 0,
-       "latency_s_median": null
-      }
-     },
-     "raw_events": 2,
-     "noise_events": 0,
-     "behaviours": 2,
-     "noise_behaviours": 0
-    },
-    "Local Elastic (Metricbeat lab)": {
+    "Elastic (Auditbeat, orion-lab)": {
      "type": "elastic",
      "runnable": true,
      "reasons": [],
@@ -45,20 +24,41 @@
       },
       "short": {
        "instances": 30,
-       "detected": 0,
-       "latency_s_median": null
+       "detected": 30,
+       "latency_s_median": 27
       }
      },
-     "raw_events": 15,
+     "raw_events": 31,
      "noise_events": 0,
-     "behaviours": 1,
+     "behaviours": 2,
+     "noise_behaviours": 0
+    },
+    "Wazuh": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 33
+      },
+      "short": {
+       "instances": 30,
+       "detected": 30,
+       "latency_s_median": 23
+      }
+     },
+     "raw_events": 32,
+     "noise_events": 0,
+     "behaviours": 3,
      "noise_behaviours": 0
     }
    },
    "ranking": {
     "measured": true,
-    "behaviours": 3,
-    "true_positives": 3,
+    "behaviours": 5,
+    "true_positives": 5,
     "p_at_1": {
      "by_time": 1.0,
      "by_priority": 1.0
@@ -74,28 +74,7 @@
    "name": "Unix shell command execution",
    "tactic": "execution",
    "per_siem": {
-    "Local Wazuh (wsl-ubuntu)": {
-     "type": "wazuh",
-     "runnable": true,
-     "reasons": [],
-     "variants": {
-      "long": {
-       "instances": 1,
-       "detected": 0,
-       "latency_s_median": null
-      },
-      "short": {
-       "instances": 30,
-       "detected": 0,
-       "latency_s_median": null
-      }
-     },
-     "raw_events": 0,
-     "noise_events": 0,
-     "behaviours": 0,
-     "noise_behaviours": 0
-    },
-    "Local Elastic (Metricbeat lab)": {
+    "Elastic (Auditbeat, orion-lab)": {
      "type": "elastic",
      "runnable": true,
      "reasons": [],
@@ -103,31 +82,52 @@
       "long": {
        "instances": 1,
        "detected": 1,
-       "latency_s_median": 47
+       "latency_s_median": 33
       },
       "short": {
        "instances": 30,
-       "detected": 0,
-       "latency_s_median": null
+       "detected": 30,
+       "latency_s_median": 24
       }
      },
-     "raw_events": 189,
-     "noise_events": 186,
-     "behaviours": 20,
-     "noise_behaviours": 19
+     "raw_events": 68,
+     "noise_events": 37,
+     "behaviours": 10,
+     "noise_behaviours": 8
+    },
+    "Wazuh": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 33
+      },
+      "short": {
+       "instances": 30,
+       "detected": 30,
+       "latency_s_median": 23
+      }
+     },
+     "raw_events": 68,
+     "noise_events": 37,
+     "behaviours": 10,
+     "noise_behaviours": 8
     }
    },
    "ranking": {
     "measured": true,
     "behaviours": 20,
-    "true_positives": 1,
+    "true_positives": 4,
     "p_at_1": {
      "by_time": 0.0,
      "by_priority": 0.0
     },
     "p_at_3": {
-     "by_time": 0.0,
-     "by_priority": 0.0
+     "by_time": 0.33,
+     "by_priority": 0.33
     }
    }
   },
@@ -136,28 +136,7 @@
    "name": "Ingress tool transfer with curl",
    "tactic": "command_and_control",
    "per_siem": {
-    "Local Wazuh (wsl-ubuntu)": {
-     "type": "wazuh",
-     "runnable": true,
-     "reasons": [],
-     "variants": {
-      "long": {
-       "instances": 1,
-       "detected": 0,
-       "latency_s_median": null
-      },
-      "short": {
-       "instances": 30,
-       "detected": 0,
-       "latency_s_median": null
-      }
-     },
-     "raw_events": 0,
-     "noise_events": 0,
-     "behaviours": 0,
-     "noise_behaviours": 0
-    },
-    "Local Elastic (Metricbeat lab)": {
+    "Elastic (Auditbeat, orion-lab)": {
      "type": "elastic",
      "runnable": true,
      "reasons": [],
@@ -165,24 +144,45 @@
       "long": {
        "instances": 1,
        "detected": 1,
-       "latency_s_median": 47
+       "latency_s_median": 33
       },
       "short": {
        "instances": 30,
-       "detected": 3,
-       "latency_s_median": 26
+       "detected": 30,
+       "latency_s_median": 24
       }
      },
-     "raw_events": 7,
-     "noise_events": 1,
-     "behaviours": 5,
-     "noise_behaviours": 1
+     "raw_events": 62,
+     "noise_events": 0,
+     "behaviours": 4,
+     "noise_behaviours": 0
+    },
+    "Wazuh": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 33
+      },
+      "short": {
+       "instances": 30,
+       "detected": 30,
+       "latency_s_median": 23
+      }
+     },
+     "raw_events": 31,
+     "noise_events": 0,
+     "behaviours": 3,
+     "noise_behaviours": 0
     }
    },
    "ranking": {
     "measured": true,
-    "behaviours": 5,
-    "true_positives": 4,
+    "behaviours": 7,
+    "true_positives": 7,
     "p_at_1": {
      "by_time": 1.0,
      "by_priority": 1.0
@@ -198,28 +198,7 @@
    "name": "Clear command history",
    "tactic": "defense_evasion",
    "per_siem": {
-    "Local Wazuh (wsl-ubuntu)": {
-     "type": "wazuh",
-     "runnable": true,
-     "reasons": [],
-     "variants": {
-      "long": {
-       "instances": 1,
-       "detected": 0,
-       "latency_s_median": null
-      },
-      "short": {
-       "instances": 30,
-       "detected": 0,
-       "latency_s_median": null
-      }
-     },
-     "raw_events": 0,
-     "noise_events": 0,
-     "behaviours": 0,
-     "noise_behaviours": 0
-    },
-    "Local Elastic (Metricbeat lab)": {
+    "Elastic (Auditbeat, orion-lab)": {
      "type": "elastic",
      "runnable": true,
      "reasons": [],
@@ -227,23 +206,44 @@
       "long": {
        "instances": 1,
        "detected": 1,
-       "latency_s_median": 47
+       "latency_s_median": 33
       },
       "short": {
        "instances": 30,
-       "detected": 3,
-       "latency_s_median": 26
+       "detected": 30,
+       "latency_s_median": 23
       }
      },
-     "raw_events": 58,
-     "noise_events": 1,
-     "behaviours": 9,
-     "noise_behaviours": 1
+     "raw_events": 62,
+     "noise_events": 0,
+     "behaviours": 4,
+     "noise_behaviours": 0
+    },
+    "Wazuh": {
+     "type": "wazuh",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "long": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 33
+      },
+      "short": {
+       "instances": 30,
+       "detected": 30,
+       "latency_s_median": 23
+      }
+     },
+     "raw_events": 62,
+     "noise_events": 0,
+     "behaviours": 4,
+     "noise_behaviours": 0
     }
    },
    "ranking": {
     "measured": true,
-    "behaviours": 9,
+    "behaviours": 8,
     "true_positives": 8,
     "p_at_1": {
      "by_time": 1.0,
@@ -260,7 +260,23 @@
    "name": "File modification in a watched folder",
    "tactic": "impact",
    "per_siem": {
-    "Local Wazuh (wsl-ubuntu)": {
+    "Elastic (Auditbeat, orion-lab)": {
+     "type": "elastic",
+     "runnable": true,
+     "reasons": [],
+     "variants": {
+      "file": {
+       "instances": 1,
+       "detected": 1,
+       "latency_s_median": 23
+      }
+     },
+     "raw_events": 3,
+     "noise_events": 0,
+     "behaviours": 2,
+     "noise_behaviours": 0
+    },
+    "Wazuh": {
      "type": "wazuh",
      "runnable": true,
      "reasons": [],
@@ -268,27 +284,19 @@
       "file": {
        "instances": 1,
        "detected": 1,
-       "latency_s_median": 20
+       "latency_s_median": 23
       }
      },
      "raw_events": 3,
      "noise_events": 0,
      "behaviours": 3,
      "noise_behaviours": 0
-    },
-    "Local Elastic (Metricbeat lab)": {
-     "type": "elastic",
-     "runnable": false,
-     "reasons": [
-      "blind spot: TargetFilename -> file.path"
-     ],
-     "variants": {}
     }
    },
    "ranking": {
     "measured": true,
-    "behaviours": 3,
-    "true_positives": 3,
+    "behaviours": 5,
+    "true_positives": 5,
     "p_at_1": {
      "by_time": 1.0,
      "by_priority": 1.0
@@ -302,14 +310,14 @@
  ],
  "sources": [
   {
-   "name": "Local Wazuh (wsl-ubuntu)",
-   "type": "wazuh",
-   "recent_events": 118
+   "name": "Elastic (Auditbeat, orion-lab)",
+   "type": "elastic",
+   "recent_events": 62054
   },
   {
-   "name": "Local Elastic (Metricbeat lab)",
-   "type": "elastic",
-   "recent_events": 69768
+   "name": "Wazuh",
+   "type": "wazuh",
+   "recent_events": 15054
   }
  ]
 }

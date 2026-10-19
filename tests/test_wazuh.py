@@ -105,10 +105,11 @@ detection:
 class SigmaToLucene(unittest.TestCase):
     def test_image_becomes_basename_tokens(self):
         # pySigma's default "*\/nc" matches nothing on the analysed full_log text field
-        self.assertEqual(
-            convert_sigma_rule(NC_RULE)["lucene"],
-            "full_log:(nc OR ncat OR netcat OR nc.openbsd)",
-        )
+        lucene = convert_sigma_rule(NC_RULE)["lucene"]
+        self.assertIn("full_log:(nc OR ncat OR netcat OR nc.openbsd)", lucene)
+        # a process-start alert has its own exact field, and the text match must not fire on its JSON line
+        self.assertIn("AND NOT rule.id:100200", lucene)
+        self.assertIn(r"data.process.executable:(*\/nc OR *\/ncat OR *\/netcat OR *\/nc.openbsd)", lucene)
 
     def test_keyword_fields_keep_wildcards(self):
         rule = NC_RULE.replace("Image|endswith: ['/nc', '/ncat', '/netcat', '/nc.openbsd']",
@@ -253,10 +254,6 @@ class ProcessStartAlerts(unittest.TestCase):
         self.assertEqual(e["process"]["executable"], "/usr/bin/curl")
         self.assertEqual(e["process"]["command_line"], "curl -s http://10.0.0.5/x")
         self.assertEqual(e["event"]["action"], "process-started")
-
-    def test_another_program_is_dropped_when_the_rule_names_one(self):
-        self.assertEqual(wazuh_to_ecs_events(PROCESS_ALERT, name_filter={"nc"}), [])
-        self.assertEqual(len(wazuh_to_ecs_events(PROCESS_ALERT, name_filter={"curl"})), 1)
 
     def test_command_line_rule_reads_the_process_field(self):
         rule = ("title: t\nlogsource:\n  product: linux\n  category: process_creation\ndetection:\n  selection:\n"

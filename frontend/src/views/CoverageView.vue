@@ -4,8 +4,7 @@
       <div>
         <h1 class="text-2xl font-bold text-[#142840]">Hunt coverage</h1>
         <p class="text-sm text-gray-500 mt-1 max-w-3xl">
-          Which technique rules can actually run on which connected SIEM. A rule can exist and still be useless on a SIEM that
-          records nothing it needs: those cells are the blind spots.
+          Detection rules that can run on each connected SIEM. A blind cell means the SIEM does not record a field the rule needs.
         </p>
       </div>
       <button @click="exportLayer" :disabled="exporting" class="px-4 py-2 border rounded text-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap">

@@ -230,7 +230,4 @@ def wazuh_to_ecs_events(source: dict, host_aliases: Optional[dict] = None,
     if _apply_syscheck(base, source):
         return [base]
     _apply_data_fields(base, source)
-    exe = _get(source, "data.process.executable")
-    if exe and name_filter and _basename(exe).lower() not in set(name_filter):
-        return []                      # an audit alert about another program than the rule asked for
     return [base]

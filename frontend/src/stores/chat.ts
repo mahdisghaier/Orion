@@ -6,10 +6,13 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
   const pendingSigmaRule = ref<string | null>(null)
   const lastFindings = ref<ChatFinding[]>([])
+  const lastHuntId = ref<string | null>(null)
+  const lastIntent = ref('')
   const loading = ref(false)
 
   async function sendMessage(message: string, siemTargets: string[]) {
     messages.value.push({ role: 'user', content: message })
+    lastIntent.value = message
     loading.value = true
     try {
       const resp = await apiSendMessage(message, siemTargets, messages.value.slice(0, -1))
@@ -32,6 +35,7 @@ export const useChatStore = defineStore('chat', () => {
       messages.value = resp.chat_history
       pendingSigmaRule.value = null
       lastFindings.value = resp.findings
+      lastHuntId.value = resp.hunt_id
       if (resp.findings.length > 0) {
         let summary = '\n\nFindings:\n'
         for (const f of resp.findings) {
@@ -62,7 +66,8 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     pendingSigmaRule.value = null
     lastFindings.value = []
+    lastHuntId.value = null
   }
 
-  return { messages, pendingSigmaRule, lastFindings, loading, sendMessage, approve, reject, clear }
+  return { messages, pendingSigmaRule, lastFindings, lastHuntId, lastIntent, loading, sendMessage, approve, reject, clear }
 })

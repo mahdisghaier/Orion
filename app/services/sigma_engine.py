@@ -5,6 +5,7 @@ sentinel_asim_pipeline), EQL (for Elastic, via ORION's own
 product-agnostic ECS field mapper) and Lucene (for Wazuh, via a field map
 derived from real Wazuh alerts).
 """
+import re
 from sigma.collection import SigmaCollection
 from sigma.backends.kusto import KustoBackend
 from sigma.backends.elasticsearch import EqlBackend, LuceneBackend
@@ -54,7 +55,7 @@ orion_ecs_pipeline = ProcessingPipeline(
 # Wazuh counterpart, so a rule using it is reported as "not runnable"
 # instead of silently returning 0 hits.
 #
-#   Image        -> full_log    text field, tokenised on "/" and spaces; the
+#   Image        -> full_log    and, for process-start alerts, data.process.executable (exact path); full_log is a text field, tokenised on "/" and spaces; the
 #                               process name appears in the netstat alert
 #                               (rule 533) as "<pid>/<name>". Matched by
 #                               basename token, see _BasenameToken below.
@@ -65,7 +66,7 @@ orion_ecs_pipeline = ProcessingPipeline(
 #   TargetFilename -> syscheck.path  keyword; file-integrity alerts (rules 550/553/554)
 # ─────────────────────────────────────────────────────────────────
 _WAZUH_FIELD_MAPPING = {
-    "Image": "full_log",
+    "Image": ["full_log", "data.process.executable"],
     "CommandLine": ["data.command", "data.process.command_line"],
     "User": "data.srcuser",
     "Computer": "agent.name",
@@ -156,9 +157,18 @@ def convert_to_lucene(rule_yaml: str) -> str:
         rules = SigmaCollection.from_yaml(rule_yaml)
         backend = LuceneBackend(processing_pipeline=orion_wazuh_pipeline)
         queries = backend.convert(rules)
-        return queries[0]
+        return _keep_text_match_off_process_alerts(queries[0])
     except Exception as e:
         raise SigmaConversionError(f"Lucene conversion failed: {e}") from e
+
+
+_TEXT_MATCH = re.compile(r"full_log:(\([^()]*\)|[^\s()]+)")
+
+
+def _keep_text_match_off_process_alerts(query: str) -> str:
+    """The full_log match is meant for the alerts whose text holds the process name (the listening-port alert).
+    A process-start alert has its own exact executable field, so the text match must not fire on its JSON line."""
+    return _TEXT_MATCH.sub(lambda m: f"(full_log:{m.group(1)} AND NOT rule.id:100200)", query)
 
 
 def rule_fields(rule_yaml: str) -> set:

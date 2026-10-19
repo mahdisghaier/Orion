@@ -1,27 +1,23 @@
 # ORION planner measurement
 
-Run on 2026-10-14 21:40. Model(s) that answered: gemini-flash-latest.
+Run on 2026-10-19 13:21. Model(s) that answered: gemini-3.6-flash.
 
 ## Result
 
 - Hunches answered: 4 of 5
-- Proposals made: 12; accepted by validation: 9 (75%)
-- Accepted AI rules executed on a live SIEM without error: 8 of 8
-- ...and returned at least one event: 3 of 8
+- Proposals made: 10; accepted by validation: 10 (100%)
+- Accepted AI rules executed on a live SIEM without error: 10 of 10
+- ...and returned at least one event: 9 of 10
 
 ## Per hunch
 
 | Hunch | Accepted rules | Accepted pivots | Rejected | Rule runs (events) |
 |---|---|---|---|---|
-| An attacker left a netcat listener on the workstation to keep access. | 1 | 2 | 0 | wazuh: 0, elastic: 0 |
-| Someone is downloading tools onto the workstation with curl or wget. | 1 | 1 | 1 | wazuh: 0, elastic: 19 |
-| An attacker is hiding their tracks by clearing the shell history. | 1 | 1 | 1 | wazuh: 0, elastic: 62 |
-| A reverse shell was started through bash. | 1 | 1 | 1 | wazuh: 0, elastic: 5 |
-| A user is running unusual scripts from the /tmp directory. (AI did not answer) | 0 | 0 | 0 | - |
-
-## Why proposals were rejected
-
-- duplicate of a step already proposed or taken
+| An attacker left a netcat listener on the workstation to keep access. (AI did not answer) | 0 | 0 | 0 | - |
+| Someone is downloading tools onto the workstation with curl or wget. | 1 | 2 | 0 | elastic: 716, wazuh: 316 |
+| An attacker is hiding their tracks by clearing the shell history. | 1 | 1 | 0 | elastic: 817, wazuh: 496 |
+| A reverse shell was started through bash. | 2 | 1 | 0 | elastic: 6, wazuh: 6, elastic: 0, wazuh: 167 |
+| A user is running unusual scripts from the /tmp directory. | 1 | 1 | 0 | elastic: 953, wazuh: 611 |
 
 A returned event does not mean the rule is a good detection: it only means the rule is valid and runs. Whether it is useful needs the ground-truth markers of the main evaluation or an analyst's judgement.
 

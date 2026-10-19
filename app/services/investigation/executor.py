@@ -25,7 +25,7 @@ async def execute_step(db: AsyncSession, inv: Investigation, step: Investigation
                 siem_targets=list(inv.siem_targets),
                 rule_yaml=step.payload["sigma_rule"],
                 time_range=inv.time_range,
-                client_id=inv.client_id,
+                client_id=getattr(inv, "client_id", None),
             )
             top = (await db.execute(
                 select(HuntResult).where(HuntResult.hunt_id == hunt.id)
@@ -48,7 +48,7 @@ async def execute_step(db: AsyncSession, inv: Investigation, step: Investigation
         else:
             payload = step.payload
             finding = await db.get(HuntResult, payload["finding_id"])
-            if finding is None or finding.client_id != inv.client_id:
+            if finding is None or finding.client_id != getattr(inv, "client_id", None):
                 raise ContextError(404, "The finding this step refers to no longer exists")
             ctx = await fetch_finding_context(db, finding, payload["pivot"], payload["window_minutes"], MAX_STORED_EVENTS)
             step.result = {

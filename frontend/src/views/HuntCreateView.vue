@@ -12,12 +12,15 @@
       <!-- SIEM targets -->
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">1. Select SIEM Targets</h2>
+        <select v-if="needClient" v-model="clientId" class="mb-3 px-3 py-2 border rounded text-sm">
+          <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
         <div v-if="loadingSIEM" class="text-sm text-gray-500">Loading connections...</div>
         <div v-else-if="siemConnections.length === 0" class="text-sm text-red-600">
           No active SIEM connections. Ask an admin to create one in the SIEM Connections page.
         </div>
         <div v-else class="space-y-2">
-          <label v-for="conn in siemConnections" :key="conn.id" class="flex items-center gap-3 p-3 border rounded hover:bg-gray-50 cursor-pointer">
+          <label v-for="conn in visibleConnections" :key="conn.id" class="flex items-center gap-3 p-3 border rounded hover:bg-gray-50 cursor-pointer">
             <input
               type="checkbox"
               :value="conn.id"
@@ -36,7 +39,7 @@
       <div class="bg-white border rounded-lg p-6">
         <h2 class="text-lg font-bold mb-4">2. Sigma Rule (YAML)</h2>
         <p class="text-sm text-gray-500 mb-3">
-          Paste a Sigma rule below. The backend will convert it to the native query of each selected SIEM (EQL for Elastic, Lucene for Wazuh) automatically.
+          Paste a Sigma rule. It is compiled to the native query of each selected SIEM (EQL for Elastic, Lucene for Wazuh).
         </p>
         <textarea
           v-model="ruleYaml"
@@ -67,14 +70,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { createHunt } from '@/api/hunts'
 import { getSIEMConnections, type SIEMConnection } from '@/api/siem'
+import { getClients, type Client } from '@/api/clients'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 
 const siemConnections = ref<SIEMConnection[]>([])
+const auth = useAuthStore()
+const clients = ref<Client[]>([])
+const clientId = ref('')
+const needClient = computed(() => auth.isPlatform && clients.value.length > 1)
+const visibleConnections = computed(() => needClient.value ? siemConnections.value.filter(c => c.client_id === clientId.value) : siemConnections.value)
 const loadingSIEM = ref(true)
 const selectedSIEMs = ref<string[]>([])
 const ruleYaml = ref('')
@@ -99,7 +109,11 @@ tags:
 
 async function loadSIEMs() {
   try {
-    siemConnections.value = await getSIEMConnections()
+    siemConnections.value = (await getSIEMConnections()).filter(c => c.is_active)
+    if (auth.isPlatform) {
+      clients.value = await getClients()
+      clientId.value = clients.value[0]?.id || ''
+    }
   } catch (e) {
     console.error('Failed to load SIEM connections:', e)
   } finally {

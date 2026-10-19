@@ -5,6 +5,7 @@ export interface SIEMConnection {
   name: string
   type: 'sentinel' | 'elastic' | 'wazuh'
   is_active: boolean
+  client_id?: string | null
   created_at: string
 }
 

@@ -175,8 +175,10 @@ import { ref, onMounted, reactive } from 'vue'
 import { getFindings, type Finding } from '@/api/findings'
 import { getClients, type Client } from '@/api/clients'
 import { useAuthStore } from '@/stores/auth'
+import { useRoute } from 'vue-router'
 
 const auth = useAuthStore()
+const route = useRoute()
 const clients = ref<Client[]>([])
 const findings = ref<Finding[]>([])
 const total = ref(0)
@@ -194,6 +196,7 @@ const filters = reactive({
   show_repeats: false,
   sort: 'priority' as 'priority' | 'time',
   client_id: '',
+  hunt_id: (route.query.hunt_id as string) || '',
 })
 
 async function loadFindings() {
@@ -204,6 +207,7 @@ async function loadFindings() {
       page: filters.page,
       page_size: filters.page_size,
       client_id: filters.client_id || undefined,
+      hunt_id: filters.hunt_id || undefined,
       siem_type: filters.siem_type || undefined,
       analyst_status: filters.analyst_status || undefined,
       corroborated: filters.corroborated === '' ? undefined : filters.corroborated === 'true',

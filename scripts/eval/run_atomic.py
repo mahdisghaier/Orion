@@ -107,10 +107,18 @@ async def main() -> None:
     parser.add_argument("--host", default="orion-lab")
     parser.add_argument("--connections", type=lambda v: v.split(","), default=["Auditbeat", "Wazuh"])
     parser.add_argument("--out", default="atomic")
+    parser.add_argument("--rules-file", default="", help="a python file with an earlier version of the rule library (rules_for), to measure what the refinement changed")
     parser.add_argument("--reuse", default="", help="results.json of an earlier run: analyse its time windows again without running the tests")
     args = parser.parse_args()
-    if not SSH:
+    if not SSH and not args.reuse:
         sys.exit("set ORION_EVAL_SSH")
+    lookup = rules_for
+    if args.rules_file:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rules_before", args.rules_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        lookup = module.rules_for
 
     runs = []
     if args.reuse:
@@ -137,7 +145,7 @@ async def main() -> None:
     cache: dict = {}
     for r in runs:
         r["siems"] = {}
-        rules = rules_for(r["technique"]) + [x for t in RELATED.get(r["name"], []) for x in rules_for(t)]
+        rules = lookup(r["technique"]) + [x for t in RELATED.get(r["name"], []) for x in lookup(t)]
         for siem in sources:
             key = {"elastic": "eql", "wazuh": "lucene"}[siem["type"]]
             if not rules:

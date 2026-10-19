@@ -1,0 +1,963 @@
+{
+ "meta": {
+  "date": "2026-10-19 13:10",
+  "commit": "cb2a100",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "python": "3.12.13",
+  "run_id": "130838"
+ },
+ "rows": [
+  {
+   "technique": "T1046",
+   "siem": "elastic",
+   "label": 1,
+   "score": 52,
+   "last_ts": 1792411812.14,
+   "features": {
+    "occurrences": 30,
+    "span_minutes": 1.28,
+    "other_sources": 1,
+    "tactic_points": 8,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1046",
+   "siem": "elastic",
+   "label": 1,
+   "score": 48,
+   "last_ts": 1792411735.432,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 8,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1046",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 52,
+   "last_ts": 1792411821.132,
+   "features": {
+    "occurrences": 30,
+    "span_minutes": 1.25,
+    "other_sources": 1,
+    "tactic_points": 8,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1046",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 48,
+   "last_ts": 1792411746.308,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 8,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 62,
+   "last_ts": 1792411816.178,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.33,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 1,
+   "score": 62,
+   "last_ts": 1792411813.165,
+   "features": {
+    "occurrences": 29,
+    "span_minutes": 1.29,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411804.647,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411781.561,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411760.764,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411746.744,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411737.256,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411735.469,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411735.445,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411735.212,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "elastic",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411730.301,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 62,
+   "last_ts": 1792411821.232,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.24,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 62,
+   "last_ts": 1792411821.174,
+   "features": {
+    "occurrences": 29,
+    "span_minutes": 1.25,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411810.201,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411788.723,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411767.624,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411757.057,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411746.636,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411746.379,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411746.307,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411745.929,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1059.004",
+   "siem": "wazuh",
+   "label": 0,
+   "score": 58,
+   "last_ts": 1792411735.923,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "elastic",
+   "label": 1,
+   "score": 69,
+   "last_ts": 1792411816.207,
+   "features": {
+    "occurrences": 31,
+    "span_minutes": 1.33,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "elastic",
+   "label": 1,
+   "score": 69,
+   "last_ts": 1792411816.168,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.33,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "elastic",
+   "label": 1,
+   "score": 65,
+   "last_ts": 1792411805.149,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "elastic",
+   "label": 1,
+   "score": 65,
+   "last_ts": 1792411742.451,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "elastic",
+   "label": 1,
+   "score": 65,
+   "last_ts": 1792411735.456,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 69,
+   "last_ts": 1792411821.314,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.25,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 65,
+   "last_ts": 1792411810.318,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 65,
+   "last_ts": 1792411746.886,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1105",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 65,
+   "last_ts": 1792411746.341,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 25,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 62,
+   "last_ts": 1792411816.178,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.33,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 62,
+   "last_ts": 1792411816.104,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.33,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411781.561,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411781.557,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411760.764,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411760.744,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411735.469,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "elastic",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411735.373,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 62,
+   "last_ts": 1792411821.232,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.24,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 62,
+   "last_ts": 1792411821.222,
+   "features": {
+    "occurrences": 28,
+    "span_minutes": 1.25,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411788.723,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411788.712,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411767.624,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411767.586,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411746.379,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1070.003",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 58,
+   "last_ts": 1792411746.267,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 1,
+    "tactic_points": 18,
+    "event_level": 3,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "elastic",
+   "label": 1,
+   "score": 33,
+   "last_ts": 1792411744.267,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "elastic",
+   "label": 1,
+   "score": 34,
+   "last_ts": 1792411740.659,
+   "features": {
+    "occurrences": 2,
+    "span_minutes": 0.05,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 0,
+    "derived": 0,
+    "has_process": 1,
+    "is_wazuh": 0
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 23,
+   "last_ts": 1792411744.257,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 7,
+    "derived": 0,
+    "has_process": 0,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 23,
+   "last_ts": 1792411740.582,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 7,
+    "derived": 0,
+    "has_process": 0,
+    "is_wazuh": 1
+   }
+  },
+  {
+   "technique": "T1565.001",
+   "siem": "wazuh",
+   "label": 1,
+   "score": 23,
+   "last_ts": 1792411737.56,
+   "features": {
+    "occurrences": 1,
+    "span_minutes": 0.0,
+    "other_sources": 0,
+    "tactic_points": 18,
+    "event_level": 5,
+    "derived": 0,
+    "has_process": 0,
+    "is_wazuh": 1
+   }
+  }
+ ]
+}

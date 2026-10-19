@@ -1,15 +1,15 @@
 # Learning the priority weights
 
-3 labelled runs, 89 behaviours, 44 of them the scenario under test.
+3 labelled runs, 149 behaviours, 101 of them the scenario under test.
 
 Each run is held out in turn; the model is trained on the others. Cells are precision at 1 / precision at 3, averaged over the techniques of the held-out run that contain at least one true positive.
 
 | Held-out run | Techniques | Newest first | Hand-set score | Learned |
 |---|---|---|---|---|
-| run-090203 | 5 | 0.80 / 0.80 | 0.80 / 0.80 | 0.80 / 0.80 |
-| run-091019 | 5 | 0.80 / 0.80 | 0.80 / 0.80 | 1.00 / 0.93 |
-| run-091820 | 4 | 0.75 / 0.75 | 0.75 / 0.75 | 0.75 / 0.92 |
-| **mean** | | **0.78 / 0.78** | **0.78 / 0.78** | **0.85 / 0.88** |
+| run-105358 | 5 | 0.80 / 0.87 | 0.80 / 0.87 | 1.00 / 0.93 |
+| run-130838 | 5 | 0.80 / 0.87 | 0.80 / 0.87 | 0.80 / 0.93 |
+| run-131100 | 5 | 0.80 / 0.87 | 0.80 / 0.87 | 0.80 / 0.87 |
+| **mean** | | **0.80 / 0.87** | **0.80 / 0.87** | **0.87 / 0.91** |
 
 Learned beat the hand-set score on precision at 1 in 1 of 3 held-out runs (tied in 2).
 
@@ -20,7 +20,7 @@ Precision at 1, over all held-out runs. *Share of scenario* is the fraction of t
 | Technique | Share of scenario | Newest first | Hand-set score | Learned |
 |---|---|---|---|---|
 | T1046 | 100% | 1.00 | 1.00 | 1.00 |
-| T1059.004 | 15% | 0.00 | 0.00 | 0.33 |
+| T1059.004 | 22% | 0.00 | 0.00 | 0.33 |
 | T1070.003 | 100% | 1.00 | 1.00 | 1.00 |
 | T1105 | 100% | 1.00 | 1.00 | 1.00 |
 | T1565.001 | 100% | 1.00 | 1.00 | 1.00 |
@@ -29,14 +29,14 @@ Precision at 1, over all held-out runs. *Share of scenario* is the fraction of t
 
 | Feature | Weight | Reading |
 |---|---|---|
-| other SIEMs | +1.34 | pushes a behaviour UP the list |
-| tactic severity | +0.63 | pushes a behaviour UP the list |
-| log(occurrences) | -0.54 | pushes it DOWN |
-| log(span minutes) | -0.42 | pushes it DOWN |
-| has process | -0.41 | pushes it DOWN |
-| is Wazuh | +0.37 | pushes a behaviour UP the list |
-| rule level | +0.35 | pushes a behaviour UP the list |
-| derived | +0.05 | pushes a behaviour UP the list |
+| other SIEMs | -0.93 | pushes it DOWN |
+| derived | +0.52 | pushes a behaviour UP the list |
+| log(occurrences) | +0.38 | pushes a behaviour UP the list |
+| has process | -0.31 | pushes it DOWN |
+| log(span minutes) | +0.29 | pushes a behaviour UP the list |
+| tactic severity | +0.24 | pushes a behaviour UP the list |
+| rule level | +0.17 | pushes a behaviour UP the list |
+| is Wazuh | -0.13 | pushes it DOWN |
 
 ## How far to trust this
 

@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-2xl font-bold text-[#142840]">Investigations</h1>
         <p class="text-sm text-gray-500 mt-1">
-          A hypothesis and the steps taken to test it. ORION proposes, you approve each step, and the record is kept.
+          Hypotheses under test, with the steps proposed, validated and approved by analysts. Every step and decision is recorded.
         </p>
       </div>
       <button @click="showForm = !showForm" class="px-4 py-2 bg-[#1a4a7a] text-white rounded text-sm whitespace-nowrap">
@@ -15,16 +15,23 @@
     <div v-if="showForm" class="bg-white border rounded-lg p-6 mb-6 space-y-4">
       <div>
         <label class="block text-xs uppercase text-gray-500 mb-1">Title</label>
-        <input v-model="title" class="w-full px-3 py-2 border rounded text-sm" placeholder="e.g., Possible backdoor on the lab workstation" />
+        <input v-model="title" class="w-full px-3 py-2 border rounded text-sm" placeholder="e.g. Possible backdoor on a workstation" />
       </div>
       <div>
         <label class="block text-xs uppercase text-gray-500 mb-1">Hypothesis</label>
         <textarea v-model="hypothesis" rows="3" class="w-full px-3 py-2 border rounded text-sm"
-          placeholder="What do you suspect, and why? e.g., An attacker may have left a netcat listener to keep access."></textarea>
+          placeholder="Describe the suspected activity and what supports it."></textarea>
       </div>
-      <p class="text-xs text-gray-500">All active SIEM connections are included.</p>
+      <div v-if="auth.isPlatform && clients.length > 1">
+        <label class="block text-xs uppercase text-gray-500 mb-1">Client</label>
+        <select v-model="clientId" class="w-full px-3 py-2 border rounded text-sm">
+          <option value="" disabled>Select a client</option>
+          <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+      <p class="text-xs text-gray-500">The investigation uses the active SIEM connections of the client.</p>
       <p v-if="formError" class="text-sm text-red-600">{{ formError }}</p>
-      <button @click="create" :disabled="saving || !title.trim() || !hypothesis.trim()" class="px-4 py-2 bg-[#1a4a7a] text-white rounded text-sm disabled:opacity-40">
+      <button @click="create" :disabled="saving || !title.trim() || !hypothesis.trim() || (auth.isPlatform && clients.length > 1 && !clientId)" class="px-4 py-2 bg-[#1a4a7a] text-white rounded text-sm disabled:opacity-40">
         Create
       </button>
     </div>
@@ -65,8 +72,13 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listInvestigations, createInvestigation, type Investigation } from '@/api/investigations'
+import { getClients, type Client } from '@/api/clients'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+const clients = ref<Client[]>([])
+const clientId = ref('')
 const items = ref<Investigation[]>([])
 const loading = ref(true)
 const loadError = ref('')
@@ -92,7 +104,7 @@ async function create() {
   saving.value = true
   formError.value = ''
   try {
-    const inv = await createInvestigation({ title: title.value.trim(), hypothesis: hypothesis.value.trim() })
+    const inv = await createInvestigation({ title: title.value.trim(), hypothesis: hypothesis.value.trim(), client_id: clientId.value || undefined })
     router.push(`/investigations/${inv.id}`)
   } catch (e: any) {
     formError.value = e.response?.data?.detail || 'Could not create the investigation'
@@ -101,5 +113,8 @@ async function create() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  if (auth.isPlatform) getClients().then(c => (clients.value = c)).catch(() => {})
+})
 </script>

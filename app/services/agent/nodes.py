@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 
 from .state import ChatState
 from .llm import get_llm, llm_call_with_audit, extract_yaml_from_response
+from .rule_repair import ensure_valid_rule
 
 
 async def understand_intent(state: ChatState) -> ChatState:
@@ -38,17 +39,32 @@ async def generate_sigma(state: ChatState) -> ChatState:
     prompt = 'Generate a Sigma rule for this hunting intent: "' + intent + '". The rule should be BROAD. Output the YAML only in a yaml code block.'
     response, audit = await asyncio.to_thread(llm_call_with_audit, llm, prompt, system_prompt, "generate_sigma")
     sigma_yaml = extract_yaml_from_response(response)
+    state["llm_audit_entries"] = state.get("llm_audit_entries", []) + [audit]
+
+    repair_audits: List[Dict[str, Any]] = []
+
+    def ask_model(repair_prompt: str, repair_system: str) -> str:
+        text, repair_audit = llm_call_with_audit(llm, repair_prompt, repair_system, "repair_sigma")
+        repair_audits.append(repair_audit)
+        return text
+
     try:
-        parsed = yaml.safe_load(sigma_yaml)
-        if not isinstance(parsed, dict) or "title" not in parsed:
-            raise ValueError("Missing title")
-    except Exception:
-        sigma_yaml = "title: Generated Hunt Rule\nlogsource:\n  product: linux\n  category: process_creation\ndetection:\n  selection:\n    CommandLine|contains: " + intent[:50] + "\n  condition: selection\ntags:\n  - attack.t1059\n"
+        sigma_yaml, notes, from_library = await asyncio.to_thread(ensure_valid_rule, sigma_yaml, intent, ask_model)
+    except ValueError as e:
+        state["llm_audit_entries"] = state["llm_audit_entries"] + repair_audits
+        state["sigma_rule"] = None
+        state["needs_confirmation"] = False
+        state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": (
+            "I could not produce a rule that compiles for this request (" + str(e)[:200] + "). "
+            "Try naming the behaviour more precisely, for example the tool, the command or the file, or pick a rule of the hunt library.")}]
+        return state
+    state["llm_audit_entries"] = state["llm_audit_entries"] + repair_audits
     state["sigma_rule"] = sigma_yaml
     state["needs_confirmation"] = True
     state["confirmed"] = None
-    state["llm_audit_entries"] = state.get("llm_audit_entries", []) + [audit]
-    state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": "I generated this Sigma rule:\n\n```yaml\n" + sigma_yaml + "\n```\n\nShall I run this hunt? (Yes / No)"}]
+    checked = "\n\nI checked that this rule compiles for the SIEMs before showing it." + (
+        " What I adjusted: " + "; ".join(notes) + "." if notes else "")
+    state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": "I generated this Sigma rule:\n\n```yaml\n" + sigma_yaml + "\n```" + checked + "\n\nShall I run this hunt? (Yes / No)"}]
     return state
 
 
@@ -64,6 +80,11 @@ async def run_hunt(state: ChatState) -> ChatState:
         state["hunt_status"] = "failed"
         return state
     try:
+        # a rule edited by the analyst, or an older one, may no longer compile: fix what can be fixed before running
+        sigma_rule, notes, _ = await asyncio.to_thread(ensure_valid_rule, sigma_rule, state.get("intent") or "", None)
+        state["sigma_rule"] = sigma_rule
+        if notes:
+            state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": "Before running, I adjusted the rule: " + "; ".join(notes) + "."}]
         async with async_session() as db:
             runner = HuntRunner(db)
             from uuid import UUID
@@ -78,7 +99,7 @@ async def run_hunt(state: ChatState) -> ChatState:
             result = await db.execute(select(HuntResult).where(HuntResult.hunt_id == hunt.id, HuntResult.suppression_id.is_(None)).order_by(HuntResult.priority_score.desc().nulls_last(), HuntResult.event_time.desc()).limit(50))
             findings = result.scalars().all()
             state["findings"] = [{"id": str(f.id), "process_name": f.process_name, "process_command_line": f.process_command_line, "host_name": f.host_name, "user_name": f.user_name, "event_time": f.event_time.isoformat() if f.event_time else None, "mitre_techniques": f.mitre_techniques, "siem_type": f.siem_type, "priority_score": f.priority_score, "priority_breakdown": f.priority_breakdown} for f in findings]
-            state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": "Hunt complete. Status: " + str(hunt.status) + ". Found " + str(hunt.total_hits) + " matching event(s)."}]
+            state["chat_history"] = state.get("chat_history", []) + [{"role": "assistant", "content": "Hunt complete. Status: " + str(hunt.status) + ". Found " + str(hunt.total_hits) + " matching event(s). The rule is saved with this hunt (Hunts page), and the findings are in the Findings page." + (" Use the buttons below to open them or to start an investigation with a report." if hunt.total_hits else "")}]
     except Exception as e:
         state["error"] = str(e)
         state["hunt_status"] = "failed"

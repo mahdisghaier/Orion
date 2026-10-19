@@ -60,6 +60,8 @@ export async function createInvestigation(body: {
   title: string
   hypothesis: string
   from_finding_id?: string
+  siem_targets?: string[]
+  client_id?: string
 }): Promise<Investigation> {
   const { data } = await api.post('/investigations/', body)
   return data

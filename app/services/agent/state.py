@@ -12,7 +12,7 @@ class ChatState(TypedDict):
     # Input
     user_message: str                                    # what the analyst asked
     user_id: str                                         # who's asking
-    chat_history: Annotated[List[Dict[str, str]], add]   # previous messages
+    chat_history: List[Dict[str, str]]                   # previous messages (each node returns the full list)
     
     # Generated during processing
     intent: Optional[str]                                # what the analyst wants
@@ -33,7 +33,7 @@ class ChatState(TypedDict):
     follow_up_suggestions: List[str]                      # next-step ideas
     
     # LLM audit trail (hallucination mitigation)
-    llm_audit_entries: Annotated[List[Dict[str, Any]], add]  # every LLM call logged
+    llm_audit_entries: List[Dict[str, Any]]              # every LLM call logged (each node returns the full list)
     
     # Error handling
     error: Optional[str]

@@ -40,7 +40,8 @@ RULES: List[str] = [
           "  selection_run:\n    CommandLine|contains:\n      - 'chmod +x'\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'",
           ["attack.command_and_control", "attack.t1105"]).format(condition="(selection_tool and selection_target) or (selection_fetch and selection_run)"),
     _single("Shell history cleared", "CommandLine|contains",
-            ["history -c", "unset HISTFILE", "HISTFILE=/dev/null", "HISTSIZE=0", "rm ~/.bash_history", "> ~/.bash_history"],
+            ["history -c", "unset HISTFILE", "HISTFILE=/dev/null", "HISTSIZE=0", "rm ~/.bash_history", "> ~/.bash_history",
+             "truncate -s0 ~/.bash_history", "truncate -s 0 ~/.bash_history", "ln -sf /dev/null ~/.bash_history"],
             ["attack.defense_evasion", "attack.t1070.003"]),
     _single("System logs removed or truncated", "CommandLine|contains",
             ["rm /var/log", "truncate -s 0 /var/log", "> /var/log/", "shred /var/log"],
@@ -82,7 +83,7 @@ RULES: List[str] = [
             ["attack.defense_evasion", "attack.t1140"]),
     _rule("Decoded content piped into a shell", "process_creation",
           "  selection_decode:\n    CommandLine|contains:\n      - 'base64 -d'\n      - 'base64 --decode'\n      - 'xxd -r'\n"
-          "  selection_shell:\n    CommandLine|contains:\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'",
+          "  selection_shell:\n    CommandLine|contains:\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'\n      - '|/bin/sh'\n      - '| /bin/sh'\n      - '|/bin/bash'\n      - '| /bin/bash'",
           ["attack.defense_evasion", "attack.t1027.010"]).format(condition="selection_decode and selection_shell"),
     _single("Python used for a socket or terminal spawn", "CommandLine|contains",
             ["import socket", "import pty", "pty.spawn", "os.system(", "subprocess.call("],

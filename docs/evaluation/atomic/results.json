@@ -1,0 +1,524 @@
+[
+ {
+  "technique": "T1003.008",
+  "name": "Access /etc/passwd (Local)",
+  "guid": "60e860b6-8ae6-49db-ad07-5e73edd88f5d",
+  "start": 1792407984,
+  "end": 1792407985,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "not detected",
+    "events": 0
+   },
+   "Wazuh": {
+    "status": "not detected",
+    "events": 0
+   }
+  }
+ },
+ {
+  "technique": "T1003.008",
+  "name": "Access /etc/shadow (Local)",
+  "guid": "3723ab77-c546-403c-8fb4-bb577033b235",
+  "start": 1792408092,
+  "end": 1792408092,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shadow password file accessed"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shadow password file accessed"
+   }
+  }
+ },
+ {
+  "technique": "T1046",
+  "name": "Port Scan",
+  "guid": "68e907da-2539-48f6-9fc9-257a78c05540",
+  "start": 1792408196,
+  "end": 1792408196,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Network discovery tool executed"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Network discovery tool executed"
+   }
+  }
+ },
+ {
+  "technique": "T1049",
+  "name": "System Network Connections Discovery via ss or lsof (Linux/MacOS)",
+  "guid": "bcf05343-ef1d-4052-8a27-b00c9be42b9f",
+  "start": 1792408322,
+  "end": 1792408322,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Network connections listed"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 4,
+    "rule": "Network connections listed"
+   }
+  }
+ },
+ {
+  "technique": "T1053.003",
+  "name": "Cron - Replace crontab with referenced file",
+  "guid": "435057fb-74b1-410e-9403-d81baf194f75",
+  "start": 1792408445,
+  "end": 1792408445,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Cron table edited"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Cron table edited"
+   }
+  }
+ },
+ {
+  "technique": "T1053.003",
+  "name": "Cron - Add script to /etc/cron.d folder",
+  "guid": "078e69eb-d9fb-450e-b9d0-2e118217c846",
+  "start": 1792408549,
+  "end": 1792408549,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Cron table edited"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Cron table edited"
+   }
+  }
+ },
+ {
+  "technique": "T1059.004",
+  "name": "Create and Execute Bash Shell Script",
+  "guid": "7e7ac3ed-f795-4fa5-b711-09d6fbe9b873",
+  "start": 1792408656,
+  "end": 1792408656,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Reverse shell one-liner"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Reverse shell one-liner"
+   }
+  }
+ },
+ {
+  "technique": "T1059.004",
+  "name": "Command-Line Interface",
+  "guid": "d0c88567-803d-4dca-99b4-7ce65e7b257c",
+  "start": 1792408763,
+  "end": 1792408765,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Reverse shell one-liner"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Reverse shell one-liner"
+   }
+  }
+ },
+ {
+  "technique": "T1059.004",
+  "name": "Command line scripts",
+  "guid": "b04ed73c-7d43-4dc8-b563-a2fc595cba1a",
+  "start": 1792408889,
+  "end": 1792408892,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "not detected",
+    "events": 0
+   },
+   "Wazuh": {
+    "status": "not detected",
+    "events": 0
+   }
+  }
+ },
+ {
+  "technique": "T1059.004",
+  "name": "Obfuscated command line scripts",
+  "guid": "5bec4cc8-f41e-437b-b417-33ff60acf9af",
+  "start": 1792408998,
+  "end": 1792408998,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Decoded content piped into a shell"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Decoded content piped into a shell"
+   }
+  }
+ },
+ {
+  "technique": "T1059.004",
+  "name": "Shell Creation using awk command",
+  "guid": "ee72b37d-b8f5-46a5-a9e7-0ff50035ffd5",
+  "start": 1792409105,
+  "end": 1792409105,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Reverse shell one-liner"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Reverse shell one-liner"
+   }
+  }
+ },
+ {
+  "technique": "T1070.003",
+  "name": "Clear Bash history (rm)",
+  "guid": "a934276e-2be5-4a36-93fd-98adbb5bd4fc",
+  "start": 1792409209,
+  "end": 1792409209,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   }
+  }
+ },
+ {
+  "technique": "T1070.003",
+  "name": "Clear Bash history (echo)",
+  "guid": "cbf506a5-dd78-43e5-be7e-a46b7c7a0a11",
+  "start": 1792409340,
+  "end": 1792409341,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   }
+  }
+ },
+ {
+  "technique": "T1070.003",
+  "name": "Clear Bash history (cat dev/null)",
+  "guid": "b1251c35-dcd3-4ea1-86da-36d27b54f31f",
+  "start": 1792409447,
+  "end": 1792409447,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   }
+  }
+ },
+ {
+  "technique": "T1070.003",
+  "name": "Clear Bash history (truncate)",
+  "guid": "47966a1d-df4f-4078-af65-db6d9aa20739",
+  "start": 1792409551,
+  "end": 1792409552,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   }
+  }
+ },
+ {
+  "technique": "T1070.003",
+  "name": "Clear and Disable Bash History Logging",
+  "guid": "784e4011-bd1a-4ecd-a63a-8feb278512e6",
+  "start": 1792409730,
+  "end": 1792409730,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Shell history cleared"
+   }
+  }
+ },
+ {
+  "technique": "T1082",
+  "name": "List OS Information",
+  "guid": "cccb070c-df86-4216-a5bc-9fb60c74e27c",
+  "start": 1792409838,
+  "end": 1792409839,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "System information gathered"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "System information gathered"
+   }
+  }
+ },
+ {
+  "technique": "T1082",
+  "name": "Hostname Discovery",
+  "guid": "486e88ea-4f56-470f-9b57-3f4d73f39133",
+  "start": 1792409942,
+  "end": 1792409942,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "not detected",
+    "events": 0
+   },
+   "Wazuh": {
+    "status": "not detected",
+    "events": 0
+   }
+  }
+ },
+ {
+  "technique": "T1082",
+  "name": "Linux List Kernel Modules",
+  "guid": "034fe21c-3186-49dd-8d5d-128b35f181c7",
+  "start": 1792410055,
+  "end": 1792410055,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "not detected",
+    "events": 0
+   },
+   "Wazuh": {
+    "status": "not detected",
+    "events": 0
+   }
+  }
+ },
+ {
+  "technique": "T1087.001",
+  "name": "Enumerate all accounts (Local)",
+  "guid": "f8aab3dd-5990-4bf8-b8ab-2226c951696f",
+  "start": 1792410163,
+  "end": 1792410163,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Accounts enumerated"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Accounts enumerated"
+   }
+  }
+ },
+ {
+  "technique": "T1087.001",
+  "name": "View accounts with UID 0",
+  "guid": "c955a599-3653-4fe5-b631-f11c00eb0397",
+  "start": 1792410272,
+  "end": 1792410272,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Accounts enumerated"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Accounts enumerated"
+   }
+  }
+ },
+ {
+  "technique": "T1087.001",
+  "name": "Enumerate users and groups",
+  "guid": "e6f36545-dc1e-47f0-9f48-7f730f54a02e",
+  "start": 1792410376,
+  "end": 1792410376,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "not detected",
+    "events": 0
+   },
+   "Wazuh": {
+    "status": "not detected",
+    "events": 0
+   }
+  }
+ },
+ {
+  "technique": "T1105",
+  "name": "Linux Download File and Run",
+  "guid": "bdc373c5-e9cf-4563-8a7b-a9ba720a90f3",
+  "start": 1792410480,
+  "end": 1792410481,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Download piped to a shell or saved to a temporary folder"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 2,
+    "rule": "Download piped to a shell or saved to a temporary folder"
+   }
+  }
+ },
+ {
+  "technique": "T1136.001",
+  "name": "Create a user account on a Linux system",
+  "guid": "40d8eabd-e394-46f6-8785-b9bfa1d011d2",
+  "start": 1792410588,
+  "end": 1792410588,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Local account created"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 1,
+    "rule": "Local account created"
+   }
+  }
+ },
+ {
+  "technique": "T1140",
+  "name": "Base64 decoding with shell utilities",
+  "guid": "b4f6a567-a27a-41e5-b8ef-ac4b4008bb7e",
+  "start": 1792410694,
+  "end": 1792410694,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 5,
+    "rule": "Encoded content decoded on the command line"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 5,
+    "rule": "Encoded content decoded on the command line"
+   }
+  }
+ },
+ {
+  "technique": "T1548.001",
+  "name": "Set a SetUID flag on file",
+  "guid": "759055b3-3885-4582-a8ec-c00c9d64dd79",
+  "start": 1792410841,
+  "end": 1792410843,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 4,
+    "rule": "Setuid or setgid bit set"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 5,
+    "rule": "Setuid or setgid bit set"
+   }
+  }
+ },
+ {
+  "technique": "T1548.001",
+  "name": "Set a SetGID flag on file",
+  "guid": "db55f666-7cba-46c6-9fe6-205a05c3242c",
+  "start": 1792410950,
+  "end": 1792410950,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 4,
+    "rule": "Setuid or setgid bit set"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 5,
+    "rule": "Setuid or setgid bit set"
+   }
+  }
+ },
+ {
+  "technique": "T1548.001",
+  "name": "Do reconnaissance for files that have the setuid bit set",
+  "guid": "8e36da01-cd29-45fd-be72-8a0fcaad4481",
+  "start": 1792411052,
+  "end": 1792411052,
+  "siems": {
+   "Elastic (Auditbeat, orion-lab)": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Setuid or setgid bit set"
+   },
+   "Wazuh": {
+    "status": "detected",
+    "events": 3,
+    "rule": "Setuid or setgid bit set"
+   }
+  }
+ }
+]

@@ -47,7 +47,7 @@ async def default_client_id(db: AsyncSession) -> UUID:
     clients = (await db.execute(select(Client.id).where(Client.is_active.is_(True)).order_by(Client.created_at))).scalars().all()
     if len(clients) == 1:
         return clients[0]
-    raise HTTPException(status_code=422, detail="client_id is required: several clients exist")
+    raise HTTPException(status_code=422, detail="Select the client this work is for")
 
 
 async def client_for_new_object(db: AsyncSession, user: User, requested: Optional[UUID] = None) -> UUID:
@@ -78,7 +78,7 @@ async def client_of_connections(db: AsyncSession, user: User, connection_ids, re
         raise HTTPException(status_code=404, detail="SIEM connection not found")
     owners = {c for _, c in rows}
     if len(owners) != 1:
-        raise HTTPException(status_code=422, detail="The targeted connections belong to several clients")
+        raise HTTPException(status_code=422, detail="Select the connections of one client only")
     owner = owners.pop()
     if requested is not None and requested != owner:
         raise HTTPException(status_code=422, detail="client_id does not match the targeted connections")
