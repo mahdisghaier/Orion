@@ -235,3 +235,30 @@ class ConnectorRequest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+PROCESS_ALERT = {
+    "@timestamp": "2026-01-01T10:00:00.000Z",
+    "agent": {"name": "lab-host", "id": "002"},
+    "rule": {"id": "100200", "level": 3, "description": "Process started: /usr/bin/curl"},
+    "data": {"process": {"pid": 4242, "name": "curl", "executable": "/usr/bin/curl",
+                         "command_line": "curl -s http://10.0.0.5/x", "working_directory": "/home/lab"}},
+}
+
+
+class ProcessStartAlerts(unittest.TestCase):
+    def test_a_process_start_becomes_a_process_event(self):
+        (e,) = wazuh_to_ecs_events(PROCESS_ALERT)
+        self.assertEqual(e["process"]["name"], "curl")
+        self.assertEqual(e["process"]["executable"], "/usr/bin/curl")
+        self.assertEqual(e["process"]["command_line"], "curl -s http://10.0.0.5/x")
+        self.assertEqual(e["event"]["action"], "process-started")
+
+    def test_another_program_is_dropped_when_the_rule_names_one(self):
+        self.assertEqual(wazuh_to_ecs_events(PROCESS_ALERT, name_filter={"nc"}), [])
+        self.assertEqual(len(wazuh_to_ecs_events(PROCESS_ALERT, name_filter={"curl"})), 1)
+
+    def test_command_line_rule_reads_the_process_field(self):
+        rule = ("title: t\nlogsource:\n  product: linux\n  category: process_creation\ndetection:\n  selection:\n"
+                "    CommandLine|contains: 'history -c'\n  condition: selection\n")
+        self.assertIn("data.process.command_line", convert_sigma_rule(rule)["lucene"])

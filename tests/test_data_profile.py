@@ -53,8 +53,10 @@ class BlindSpots(unittest.TestCase):
         self.assertEqual(blind_spots({"Unknown"}, "elastic", profile()), [])
 
     def test_wazuh_blind_spot(self):
-        p = profile("wazuh", present={"data.command": 0})
-        self.assertEqual(blind_spots({"CommandLine", "Computer"}, "wazuh", p), ["CommandLine -> data.command"])
+        silent = {f: 0 for f in ("data.command", "data.process.command_line")}
+        p = profile("wazuh", present=silent)
+        (spot,) = blind_spots({"CommandLine", "Computer"}, "wazuh", p)
+        self.assertTrue(spot.startswith("CommandLine -> "))
 
 
 class ProfileQueries(unittest.IsolatedAsyncioTestCase):

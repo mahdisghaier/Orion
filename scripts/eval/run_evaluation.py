@@ -341,7 +341,7 @@ def write_report(analysis: dict, meta: dict) -> None:
     sources = analysis["sources"]
     lines = [
         "# ORION evaluation results", "",
-        f"Run on {meta['date']} against real telemetry from one Linux host (WSL2). Commit `{meta['commit']}`. "
+        f"Run on {meta['date']} against real telemetry from one Linux host (an Ubuntu Server virtual machine). Commit `{meta['commit']}`. "
         f"Each technique was executed as harmless local activity with a unique marker; a detection counts only if the "
         f"returned event carries that marker. Unrelated matches are reported as noise (the false-positive proxy).", "",
         "## Sources", "",
@@ -420,7 +420,7 @@ def write_report(analysis: dict, meta: dict) -> None:
     not_measured.append("- **Windows telemetry, network telemetry, other SIEMs**: the lab has one Linux host, Elastic and Wazuh only.")
 
     validity = [
-        "- One host, one run: latencies depend on Metricbeat's 30 s period and Wazuh's 360 s listening-port check.",
+        "- One host, one run: latencies include the shipping delay of the sensor file (Filebeat for Elastic, the Wazuh agent for Wazuh) and the one-minute refresh of the indexers.",
         "- The techniques are simulated with harmless commands; real adversary tooling may behave differently.",
         "- The Sigma rules are deliberately broad; a tighter rule would lower noise and could change what is detected.",
         "- Short-lived processes are caught by sampling with a probability of roughly duration / period; with few repeats the "

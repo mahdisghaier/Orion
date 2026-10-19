@@ -11,26 +11,34 @@ import yaml
 
 
 def _rule(title: str, category: str, detection: str, tags: List[str]) -> str:
+    detection = detection.replace("{", "{{").replace("}", "}}")      # the caller fills {condition} with str.format
     return (f"title: {title}\nstatus: stable\nlogsource:\n  product: linux\n  category: {category}\ndetection:\n{detection}\n"
             f"  condition: {{condition}}\ntags:\n" + "".join(f"  - {t}\n" for t in tags))
 
 
 def _single(title, detection_field, values, tags, category="process_creation"):
-    body = "  selection:\n    " + detection_field + ":\n" + "".join(f"      - '{v}'\n" for v in values).rstrip("\n")
+    body = "  selection:\n    " + detection_field + ":\n" + "".join("      - '" + v.replace("'", "''") + "'\n" for v in values).rstrip("\n")
     return _rule(title, category, body, tags).format(condition="selection")
 
 
 RULES: List[str] = [
-    _single("Reverse shell one-liner", "CommandLine|contains",
-            ["/dev/tcp/", "bash -i >&", "nc -e ", "ncat -e ", "socat exec:"],
-            ["attack.execution", "attack.t1059.004"]),
-    _single("Network discovery tool executed", "Image|endswith",
-            ["/nc", "/ncat", "/netcat", "/nc.openbsd", "/nmap"],
-            ["attack.discovery", "attack.t1046"]),
+    _rule("Reverse shell one-liner", "process_creation",
+          "  selection_shell:\n    CommandLine|contains:\n      - '/dev/tcp/'\n      - 'bash -i >&'\n      - 'nc -e '\n      - 'ncat -e '\n      - 'socat exec:'\n"
+          "      - 'awk ''BEGIN {system('\n      - 'awk ''BEGIN{system('\n      - '-exec /bin/sh'\n      - '-exec /bin/bash'\n"
+          "      - 'chmod +x /tmp/'\n      - 'chmod +x /var/tmp/'\n      - 'chmod +x /dev/shm/'\n"
+          "  selection_fetch:\n    CommandLine|contains:\n      - 'curl '\n      - 'wget '\n"
+          "  selection_run:\n    CommandLine|contains:\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'",
+          ["attack.execution", "attack.t1059.004"]).format(condition="selection_shell or (selection_fetch and selection_run)"),
+    _rule("Network discovery tool executed", "process_creation",
+          "  selection_tool:\n    Image|endswith:\n      - '/nc'\n      - '/ncat'\n      - '/netcat'\n      - '/nc.openbsd'\n      - '/nmap'\n"
+          "  selection_loop:\n    CommandLine|contains|all:\n      - 'for port'\n      - '/dev/tcp/'",
+          ["attack.discovery", "attack.t1046"]).format(condition="selection_tool or selection_loop"),
     _rule("Download piped to a shell or saved to a temporary folder", "process_creation",
           "  selection_tool:\n    Image|endswith:\n      - '/curl'\n      - '/wget'\n"
-          "  selection_target:\n    CommandLine|contains:\n      - '/tmp/'\n      - '/dev/shm/'\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'",
-          ["attack.command_and_control", "attack.t1105"]).format(condition="selection_tool and selection_target"),
+          "  selection_target:\n    CommandLine|contains:\n      - '/tmp/'\n      - '/dev/shm/'\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'\n"
+          "  selection_fetch:\n    CommandLine|contains:\n      - 'curl '\n      - 'wget '\n"
+          "  selection_run:\n    CommandLine|contains:\n      - 'chmod +x'\n      - '| sh'\n      - '|sh'\n      - '| bash'\n      - '|bash'",
+          ["attack.command_and_control", "attack.t1105"]).format(condition="(selection_tool and selection_target) or (selection_fetch and selection_run)"),
     _single("Shell history cleared", "CommandLine|contains",
             ["history -c", "unset HISTFILE", "HISTFILE=/dev/null", "HISTSIZE=0", "rm ~/.bash_history", "> ~/.bash_history"],
             ["attack.defense_evasion", "attack.t1070.003"]),
@@ -43,10 +51,13 @@ RULES: List[str] = [
             ["attack.defense_evasion", "attack.t1562.001"]),
     _single("Local account created", "Image|endswith", ["/useradd", "/adduser"],
             ["attack.persistence", "attack.t1136.001"]),
-    _single("Cron table edited", "Image|endswith", ["/crontab"],
-            ["attack.persistence", "attack.t1053.003"]),
+    _rule("Cron table edited", "process_creation",
+          "  selection_tool:\n    Image|endswith:\n      - '/crontab'\n"
+          "  selection_file:\n    CommandLine|contains:\n      - '/etc/cron.d/'\n      - '/etc/cron.daily/'\n      - '/etc/cron.hourly/'\n      - '/var/spool/cron/'",
+          ["attack.persistence", "attack.t1053.003"]).format(condition="selection_tool or selection_file"),
     _single("Setuid or setgid bit set", "CommandLine|contains",
-            ["chmod u+s", "chmod +s", "chmod 4755", "chmod 4777", "chmod 6755"],
+            ["chmod u+s", "chmod u+xs", "chmod g+s", "chmod g+xs", "chmod +s", "chmod 4755", "chmod 4777", "chmod 6755",
+             "chmod 2755", "-perm -4000", "-perm -2000", "-perm -u=s", "-perm /4000"],
             ["attack.privilege_escalation", "attack.t1548.001"]),
     _single("Shadow password file accessed", "CommandLine|contains", ["/etc/shadow"],
             ["attack.credential_access", "attack.t1003.008"]),
@@ -59,11 +70,12 @@ RULES: List[str] = [
     _single("Network configuration listed", "CommandLine|contains",
             ["ifconfig", "ip addr", "ip route", "ip a ", "arp -a", "cat /etc/resolv.conf"],
             ["attack.discovery", "attack.t1016"]),
-    _single("System information gathered", "CommandLine|contains",
-            ["uname -a", "cat /etc/os-release", "cat /etc/issue", "lscpu", "dmidecode", "hostnamectl"],
-            ["attack.discovery", "attack.t1082"]),
+    _rule("System information gathered", "process_creation",
+          "  selection_cmd:\n    CommandLine|contains:\n      - 'uname -a'\n      - 'cat /etc/os-release'\n      - 'cat /etc/issue'\n      - 'lscpu'\n      - 'dmidecode'\n      - 'hostnamectl'\n"
+          "  selection_tool:\n    Image|endswith:\n      - '/hostname'\n      - '/lsmod'",
+          ["attack.discovery", "attack.t1082"]).format(condition="selection_cmd or selection_tool"),
     _single("Accounts enumerated", "CommandLine|contains",
-            ["cat /etc/passwd", "getent passwd", "lastlog", "cat /etc/group"],
+            ["/etc/passwd", "getent passwd", "lastlog", "/etc/group"],
             ["attack.discovery", "attack.t1087"]),
     _single("Encoded content decoded on the command line", "CommandLine|contains",
             ["base64 -d", "base64 --decode", "openssl enc -d", "xxd -r"],

@@ -82,6 +82,21 @@ def _base_event(source: dict, host_aliases: Optional[dict]) -> dict:
     return event
 
 
+def _apply_process_start(event: dict, proc: dict) -> None:
+    """A process-start alert (rule 100200): the JSON line written by the Auditbeat sensor and read by the Wazuh agent."""
+    exe = proc.get("executable") or ""
+    event["process"] = {
+        "name": proc.get("name") or _basename(exe),
+        "executable": exe,
+        "command_line": proc.get("command_line") or proc.get("title") or _basename(exe),
+    }
+    if proc.get("pid"):
+        event["process"]["pid"] = proc["pid"]
+    if proc.get("working_directory"):
+        event["process"]["working_directory"] = proc["working_directory"]
+    event["event"]["action"] = "process-started"
+
+
 def _apply_data_fields(event: dict, source: dict) -> None:
     """Fields from decoded log data (sudo, PAM, sshd, ...). Only what is present is mapped."""
     data = source.get("data")
@@ -104,6 +119,11 @@ def _apply_data_fields(event: dict, source: dict) -> None:
         event.setdefault("destination", {})["ip"] = data["dstip"]
     if data.get("dstport"):
         event.setdefault("destination", {})["port"] = data["dstport"]
+
+    proc = data.get("process")
+    if isinstance(proc, dict) and (proc.get("executable") or proc.get("name")):
+        _apply_process_start(event, proc)
+        return
 
     command = data.get("command")
     if command:
@@ -210,4 +230,7 @@ def wazuh_to_ecs_events(source: dict, host_aliases: Optional[dict] = None,
     if _apply_syscheck(base, source):
         return [base]
     _apply_data_fields(base, source)
+    exe = _get(source, "data.process.executable")
+    if exe and name_filter and _basename(exe).lower() not in set(name_filter):
+        return []                      # an audit alert about another program than the rule asked for
     return [base]

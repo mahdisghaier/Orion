@@ -58,14 +58,15 @@ orion_ecs_pipeline = ProcessingPipeline(
 #                               process name appears in the netstat alert
 #                               (rule 533) as "<pid>/<name>". Matched by
 #                               basename token, see _BasenameToken below.
-#   CommandLine  -> data.command  keyword; present on sudo alerts (rule 5403)
+#   CommandLine  -> data.command  keyword; present on sudo alerts (rule 5403), or data.process.command_line on a process-start
+#                   alert (rule 100200, built from the JSON lines of the Auditbeat sensor)
 #   User         -> data.srcuser  keyword; sudo / PAM alerts
 #   Computer     -> agent.name    keyword
 #   TargetFilename -> syscheck.path  keyword; file-integrity alerts (rules 550/553/554)
 # ─────────────────────────────────────────────────────────────────
 _WAZUH_FIELD_MAPPING = {
     "Image": "full_log",
-    "CommandLine": "data.command",
+    "CommandLine": ["data.command", "data.process.command_line"],
     "User": "data.srcuser",
     "Computer": "agent.name",
     "TargetFilename": "syscheck.path",

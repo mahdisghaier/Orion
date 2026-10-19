@@ -63,3 +63,27 @@ class Grouping(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NormalisedCommandLines(unittest.TestCase):
+    def test_ports_and_counts_do_not_split_a_behaviour(self):
+        events = [proc_event(i, cmd=f"nc -l 127.0.0.1 {20000 + i * 37}") for i in range(30)]
+        self.assertEqual(len(group_events("elastic", pairs(events))), 1)
+
+    def test_random_names_do_not_split_a_behaviour(self):
+        a = proc_event(0, cmd="bash -c 'export HISTFILE=/tmp/run1-hist-3fa9c01b22; history -c'")
+        b = proc_event(5, cmd="bash -c 'export HISTFILE=/tmp/run2-hist-9be4d77a10; history -c'")
+        self.assertEqual(len(group_events("elastic", pairs([a, b]))), 1)
+
+    def test_a_different_destination_stays_separate(self):
+        a = proc_event(0, cmd="curl http://10.0.0.5/x")
+        b = proc_event(5, cmd="curl http://10.0.0.9/x")
+        self.assertEqual(len(group_events("elastic", pairs([a, b]))), 2)
+
+    def test_a_different_command_stays_separate(self):
+        self.assertEqual(len(group_events("elastic", pairs([proc_event(0, cmd="nc -l 1"), proc_event(1, cmd="nc -z 1")]))), 2)
+
+    def test_random_suffix_with_a_digit_is_masked(self):
+        a = proc_event(0, cmd="curl -s http://127.0.0.1:8000/?m=orion-eval-curl-short-a1f3")
+        b = proc_event(1, cmd="curl -s http://127.0.0.1:8000/?m=orion-eval-curl-short-9bd2")
+        self.assertEqual(len(group_events("elastic", pairs([a, b]))), 1)

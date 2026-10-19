@@ -1,0 +1,11 @@
+<!-- Added to /var/ossec/etc/rules/local_rules.xml on the Wazuh manager (see scripts/lab/wazuh_manager_rules.sh).
+     The lines come from Auditbeat (JSON). One alert per process start. -->
+<group name="orion,process,">
+  <rule id="100200" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="event.module">^auditd$</field>
+    <field name="event.action">^executed$</field>
+    <description>Process started: $(process.executable)</description>
+    <group>audit_command,</group>
+  </rule>
+</group>

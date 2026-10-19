@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 FIM_DIR = Path("/home/soc/orion-eval-fim") if os.environ.get("ORION_EVAL_SSH") else Path.home() / "orion-eval-fim"
-HOLD_SECONDS = 100          # how long the "long-lived" variants stay alive (Metricbeat samples every 30 s)
+HOLD_SECONDS = 100          # how long the "long-lived" variants stay alive
 NC_HOLD_SECONDS = 420       # the listener must outlive Wazuh's 360 s listening-port check
 
 
@@ -162,7 +162,7 @@ TECHNIQUES: List[Technique] = [
               launch_listener, hold=NC_HOLD_SECONDS),
     Technique("T1059.004", "Unix shell command execution", "execution",
               _rule("Shell executed",
-                    "    Image|endswith:\n      - '/bash'\n      - '/sh'\n      - '/dash'",
+                    "    Image|endswith:\n      - '/bash'\n      - '/sh'\n      - '/dash'\n    CommandLine|contains: ' -c '",
                     ["attack.execution", "attack.t1059.004"]),
               launch_shell),
     Technique("T1105", "Ingress tool transfer with curl", "command_and_control",
