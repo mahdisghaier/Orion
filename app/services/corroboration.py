@@ -9,7 +9,10 @@ from app.services.prioritization import fingerprint_stats
 
 
 async def attach_corroboration(db: AsyncSession, findings: Iterable[HuntResult]) -> List[HuntResult]:
-    """Set `corroborated_by` on each finding: the OTHER findings sharing its correlation_id.
+    """Set `corroborated_by` on each finding: the findings of ANOTHER SIEM type sharing its correlation_id.
+
+    A group can chain several findings of one SIEM through a finding of the other SIEM; two findings of the
+    same SIEM do not corroborate each other, so they are left out.
 
     One query for the whole batch. The attribute is not a column; the response schema reads it.
     """
@@ -24,7 +27,7 @@ async def attach_corroboration(db: AsyncSession, findings: Iterable[HuntResult])
         for row in rows:
             siblings.setdefault(row.correlation_id, []).append({"id": row.id, "siem_type": row.siem_type})
     for f in findings:
-        f.corroborated_by = [s for s in siblings.get(f.correlation_id, []) if s["id"] != f.id]
+        f.corroborated_by = [s for s in siblings.get(f.correlation_id, []) if s["id"] != f.id and s["siem_type"] != f.siem_type]
     return findings
 
 
