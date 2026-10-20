@@ -1,0 +1,21 @@
+title: Shell history cleared
+status: stable
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    CommandLine|contains:
+      - 'history -c'
+      - 'unset HISTFILE'
+      - 'HISTFILE=/dev/null'
+      - 'HISTSIZE=0'
+      - 'rm ~/.bash_history'
+      - '> ~/.bash_history'
+      - 'truncate -s0 ~/.bash_history'
+      - 'truncate -s 0 ~/.bash_history'
+      - 'ln -sf /dev/null ~/.bash_history'
+  condition: selection
+tags:
+  - attack.defense_evasion
+  - attack.t1070.003

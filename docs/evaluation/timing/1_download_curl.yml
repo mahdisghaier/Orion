@@ -1,0 +1,33 @@
+title: Download piped to a shell or saved to a temporary folder
+status: stable
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_tool:
+    Image|endswith:
+      - '/curl'
+      - '/wget'
+  selection_target:
+    CommandLine|contains:
+      - '/tmp/'
+      - '/dev/shm/'
+      - '| sh'
+      - '|sh'
+      - '| bash'
+      - '|bash'
+  selection_fetch:
+    CommandLine|contains:
+      - 'curl '
+      - 'wget '
+  selection_run:
+    CommandLine|contains:
+      - 'chmod +x'
+      - '| sh'
+      - '|sh'
+      - '| bash'
+      - '|bash'
+  condition: (selection_tool and selection_target) or (selection_fetch and selection_run)
+tags:
+  - attack.command_and_control
+  - attack.t1105
