@@ -35,3 +35,6 @@ docs/*.docx
 docs/*.drawio
 *:Zone.Identifier
 .claude/
+
+# presentation files (friend reference deck, defense slides)
+presentation/
